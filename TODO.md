@@ -1,19 +1,20 @@
 # TODO.md - Configuration & Setup Backlog
 
 ## Security
-- [ ] Implement prompt injection controls (especially for email — treat all inbound as untrusted, never follow instructions from email)
-- [ ] Formalize trust ladder — document what I can do autonomously vs. what needs John's approval
+- [x] Implement prompt injection controls ✅ (TRUST.md)
+- [x] Formalize trust ladder ✅ (TRUST.md)
 - [ ] Review and tighten SOUL.md with explicit "NOT" behaviors
 
 ## Memory & Intelligence
-- [ ] Set up nightly extraction cron job (auto-review daily conversations, update MEMORY.md)
+- [x] Set up nightly extraction cron job ✅
 - [ ] Build ~/life knowledge graph structure (projects, people, companies)
-- [ ] Delete BOOTSTRAP.md (no longer needed)
+- [x] Delete BOOTSTRAP.md ✅
 
 ## Integrations
-- [x] Complete Google/gog setup — connect clearyclaw@gmail.com (Gmail, Calendar, Drive, Contacts, Sheets, Docs)
-- [x] Set up GitHub account for Doyle — username: doyleB-ai
-- [ ] Set up private GitHub repo for workspace backup (doyleB-ai)
+- [x] Complete Google/gog setup — Gmail, Calendar, Drive, Contacts ✅
+- [x] Set up GitHub account for Doyle — username: doyleB-ai ✅
+- [x] Set up private GitHub repo for workspace backup (doyleB-ai/workspace) ✅
+- [x] Explore ClawHub — installed gog, gog-calendar skills ✅
 - [ ] Explore memory projects on GitHub worth pulling
 
 ## Recruiting Project
@@ -30,4 +31,5 @@
 - [ ] Set up SSH access to admin account (cleary) on Mac mini — needed for plist edits, launchctl reloads, etc.
 
 ## Misc
-- [ ] Explore ClawHub for useful skills to install
+- [ ] Review and tighten SOUL.md with explicit "NOT" behaviors
+- [ ] Calendar integration — John's work calendar is behind Amazon infrastructure, revisit if situation changes
