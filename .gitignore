@@ -1,0 +1,9 @@
+# Ignore sensitive/runtime files
+.openclaw/
+*.env
+*.secret
+*.key
+*.pem
+
+# macOS
+.DS_Store
