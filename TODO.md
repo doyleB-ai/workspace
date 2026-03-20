@@ -17,6 +17,9 @@
 - [x] Explore ClawHub — installed gog, gog-calendar skills ✅
 - [ ] Explore memory projects on GitHub worth pulling
 
+## LinkedIn
+- [ ] Update John's LinkedIn profile — lengthy discussion needed, schedule dedicated session
+
 ## Recruiting Project
 - [ ] Find efficient LinkedIn search/outreach workflow for L6 NDM role
 - [ ] Build target candidate list (Austin-first, military preferred)

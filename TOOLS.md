@@ -13,6 +13,17 @@ Things like:
 - Device nicknames
 - Anything environment-specific
 
+## Google Docs
+
+- **Doyle Troubleshooting Guide**
+  - Doc ID: `1Ax2uRVNzmCSGtx_Mtn0j2RL1kGiMW8aS6Tpt3rdk_ic`
+  - URL: https://docs.google.com/document/d/1Ax2uRVNzmCSGtx_Mtn0j2RL1kGiMW8aS6Tpt3rdk_ic/edit
+  - ⚠️ **Rule:** Whenever `TROUBLESHOOTING.md` is updated, immediately sync to this doc:
+    ```
+    gog docs clear 1Ax2uRVNzmCSGtx_Mtn0j2RL1kGiMW8aS6Tpt3rdk_ic --account clearyclaw@gmail.com
+    gog docs write 1Ax2uRVNzmCSGtx_Mtn0j2RL1kGiMW8aS6Tpt3rdk_ic --file /Users/clearyclaw/.openclaw/workspace/TROUBLESHOOTING.md --account clearyclaw@gmail.com
+    ```
+
 ## Examples
 
 ```markdown

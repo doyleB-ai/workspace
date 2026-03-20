@@ -27,6 +27,13 @@
 - Operational excellence — SLA ownership, oncall management, metrics-driven
 - Amazon Leadership Principles alignment (especially Dive Deep, Deliver Results, Hire and Develop the Best)
 
+### Non-Negotiable Filters (added 2026-03-19)
+- **Minimum 2 years people management experience** — must have actually led a team, not just "led projects"
+- **Consistent career growth** — look for progressive titles over time (NE → Senior NE → Lead/Principal → Manager). Red flag: lateral moves or gaps without explanation
+- **Company size preference:** Small to mid-size companies valued — someone who has thrived without hyperscaler resources shows adaptability and ownership mentality
+- **Exclude:** Anyone currently employed at Amazon, AWS, Whole Foods, or Oracle — no active poaching
+- **Former Amazon/AWS/Whole Foods = PLUS** — knows the culture, systems, LPs. Great signal. Currently employed elsewhere = fair game.
+
 ### Nice to Have
 - AWS networking experience (Direct Connect, Transit Gateway, VPC)
 - Experience in hyperscaler or large cloud provider networking
