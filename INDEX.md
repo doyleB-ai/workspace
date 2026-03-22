@@ -16,6 +16,7 @@ For full content, read the individual files. Vector store indexes everything aut
 - projects/l6-ndm-recruiting.md — hiring L6 NDM for NDS team [active]
   - projects/recruiting-l6-ndm-detail.md — detailed recruiting plan
   - projects/recruiting-candidates.md — candidate longlist
+- projects/financial-planning-agent.md — autonomous agent for investment analysis, risk assessment, recommendations [planning]
 
 ## Areas
 - areas/doyle-config.md — ongoing Doyle setup and improvement

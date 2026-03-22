@@ -31,3 +31,8 @@ related: [facts/john]
 - first_observed: 2026-03-12
 - evidence: Explicitly stated — "Will say when something is too much work; find a more efficient path."
 - confidence: high
+
+## [belief] No filler words, prefer quantitative data
+- first_observed: 2026-03-21
+- evidence: Explicitly stated — "I don't like filler words. I prefer quantitative data."
+- confidence: high

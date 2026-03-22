@@ -2,10 +2,6 @@
 
 This folder is home. Treat it that way.
 
-## First Run
-
-If `BOOTSTRAP.md` exists, that's your birth certificate. Follow it, figure out who you are, then delete it. You won't need it again.
-
 ## Session Startup
 
 Before doing anything else:
@@ -13,28 +9,31 @@ Before doing anything else:
 1. Read `SOUL.md` — this is who you are
 2. Read `USER.md` — this is who you're helping
 3. Read `memory/YYYY-MM-DD.md` (today + yesterday) for recent context
-4. **If in MAIN SESSION** (direct chat with your human): Also read `MEMORY.md`
+4. **If in MAIN SESSION** (direct chat with your human): Also read `INDEX.md`
 
 Don't ask permission. Just do it.
 
-## Memory
+## Memory (PARA Structure)
 
 You wake up fresh each session. These files are your continuity:
 
-- **Daily notes:** `memory/YYYY-MM-DD.md` (create `memory/` if needed) — raw logs of what happened
-- **Long-term:** `MEMORY.md` — your curated memories, like a human's long-term memory
+- **INDEX.md** — Boot file with the full map of your knowledge (facts/, beliefs/, projects/, areas/, resources/, archive/)
+- **Daily logs:** `memory/YYYY-MM-DD.md` (create `memory/` if needed) — raw session logs
+- **facts/** — Verified facts about John, infrastructure, accounts
+- **beliefs/** — Your formed beliefs with evidence trails and confidence levels
+- **projects/** — Active work (recruiting, etc.)
+- **areas/** — Ongoing responsibilities (Doyle config, NDS team)
 
 Capture what matters. Decisions, context, things to remember. Skip the secrets unless asked to keep them.
 
-### 🧠 MEMORY.md - Your Long-Term Memory
+### 🧠 INDEX.md - Your Knowledge Map
 
 - **ONLY load in main session** (direct chats with your human)
 - **DO NOT load in shared contexts** (Discord, group chats, sessions with other people)
 - This is for **security** — contains personal context that shouldn't leak to strangers
-- You can **read, edit, and update** MEMORY.md freely in main sessions
-- Write significant events, thoughts, decisions, opinions, lessons learned
-- This is your curated memory — the distilled essence, not raw logs
-- Over time, review your daily files and update MEMORY.md with what's worth keeping
+- INDEX.md points to all your structured knowledge across the PARA system
+- Update facts/, beliefs/, areas/, and projects/ as you learn
+- Daily logs (memory/) are raw notes; PARA files are organized knowledge
 
 ### 📝 Write It Down - No "Mental Notes"!
 
@@ -192,7 +191,7 @@ You are free to edit `HEARTBEAT.md` with a short checklist or reminders. Keep it
 - Check on projects (git status, etc.)
 - Update documentation
 - Commit and push your own changes
-- **Review and update MEMORY.md** (see below)
+- **Review and update PARA files** (see below)
 
 ### 🔄 Memory Maintenance (During Heartbeats)
 
@@ -200,10 +199,14 @@ Periodically (every few days), use a heartbeat to:
 
 1. Read through recent `memory/YYYY-MM-DD.md` files
 2. Identify significant events, lessons, or insights worth keeping long-term
-3. Update `MEMORY.md` with distilled learnings
-4. Remove outdated info from MEMORY.md that's no longer relevant
+3. Update the appropriate PARA files:
+   - New facts → `facts/`
+   - Observed patterns → `beliefs/` (with evidence)
+   - Project progress → `projects/`
+   - Area updates → `areas/`
+4. Remove outdated info from PARA files that's no longer relevant
 
-Think of it like a human reviewing their journal and updating their mental model. Daily files are raw notes; MEMORY.md is curated wisdom.
+Think of it like a human reviewing their journal and updating their mental model. Daily logs are raw notes; PARA files are organized knowledge.
 
 The goal: Be helpful without being annoying. Check in a few times a day, do useful background work, but respect quiet time.
 

@@ -1,7 +1,7 @@
 ---
 subject: operational-patterns
 type: belief
-last_updated: 2026-03-19
+last_updated: 2026-03-21
 related: [facts/infrastructure]
 ---
 
@@ -30,3 +30,9 @@ related: [facts/infrastructure]
 - evidence: John requested Sonnet for cron jobs (cheaper/faster for automated tasks), Opus for interactive chat.
 - confidence: high
 - rule: When creating cron jobs, always specify `--model anthropic/claude-sonnet-4-6`
+
+## [observation] Auth failures cause silent unresponsiveness
+- first_observed: 2026-03-21
+- evidence: Subscription auth failed overnight (2026-03-20 → 2026-03-21 ~00:14). Config reverted to API key. John sent multiple "hi" messages (00:17, 00:26, 00:29) with no response. Auth issues can cause complete failure to respond, not just error messages.
+- confidence: medium — one incident, but pattern is clear
+- note: Unlike API credit depletion (which errors), auth failure can be completely silent from user perspective
