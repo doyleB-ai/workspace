@@ -36,3 +36,17 @@ related: [facts/infrastructure]
 - evidence: Subscription auth failed overnight (2026-03-20 → 2026-03-21 ~00:14). Config reverted to API key. John sent multiple "hi" messages (00:17, 00:26, 00:29) with no response. Auth issues can cause complete failure to respond, not just error messages.
 - confidence: medium — one incident, but pattern is clear
 - note: Unlike API credit depletion (which errors), auth failure can be completely silent from user perspective
+
+## [belief] Cron jobs now use Haiku by default
+- first_observed: 2026-03-22
+- evidence: John requested downgrade of all scheduled jobs (Auth Monitor, Morning Brief, Daily Workspace Backup, Nightly Extraction) from Sonnet to Haiku to reduce overnight automation costs. Haiku sufficient for file/status ops.
+- confidence: high
+- rule: When creating cron jobs after 2026-03-22, default to `--model anthropic/claude-haiku-4-5` instead of Sonnet
+- note: Supercedes earlier belief about Sonnet default
+
+## [belief] Auth fallback protection reduces financial risk
+- first_observed: 2026-03-22
+- evidence: Implemented automatic recovery in 5am Auth Monitor: if subscription auth fails, downgrade Doyle to Sonnet and restart gateway. This prevents accidental API bill spikes if token auth breaks overnight.
+- confidence: high
+- rule: Always include fallback protections in auth-critical cron jobs
+- note: John's deliberate security posture (non-admin account, manual interventions acceptable) means system must be resilient to failures

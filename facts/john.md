@@ -39,6 +39,8 @@ related: [facts/infrastructure, areas/nds-team]
 - Direct communicator — gets to the point quickly
 - Will say when something is too much work; find a more efficient path
 - Learns by doing — walk through step by step with context
+- **Cost-conscious:** Wants visibility into what services consume (tokens, API credits, model choices)
+- **Verification-first:** Prefers to test and confirm (e.g., "run $2 worth of work to confirm auth is working") rather than assume
 
 ## Security Posture
 - Security conscious — deliberately keeps clearyclaw as a non-admin account
