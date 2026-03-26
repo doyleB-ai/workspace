@@ -1,6 +1,9 @@
 {
-  "timestamp": "2026-03-24T12:00:00Z",
   "profile": "anthropic:manual",
+  "timestamp": "2026-03-25T12:00:00Z",
   "status": "ok",
-  "action": "none"
+  "action": "none",
+  "checkTime": "05:00 AM PDT",
+  "authOrder": ["anthropic:manual", "anthropic:default"],
+  "note": "Subscription auth (anthropic:manual) is active and primary in auth order. No action taken."
 }
