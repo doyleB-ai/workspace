@@ -1,9 +1,7 @@
 {
   "profile": "anthropic:manual",
-  "timestamp": "2026-03-25T12:00:00Z",
+  "timestamp": "2026-03-26T12:00:00Z",
   "status": "ok",
   "action": "none",
-  "checkTime": "05:00 AM PDT",
-  "authOrder": ["anthropic:manual", "anthropic:default"],
-  "note": "Subscription auth (anthropic:manual) is active and primary in auth order. No action taken."
+  "notes": "Subscription auth (token mode) active. Primary model: anthropic/claude-opus-4-6. No fallback detected."
 }
