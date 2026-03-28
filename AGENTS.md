@@ -48,6 +48,16 @@ Capture what matters. Decisions, context, things to remember. Skip the secrets u
 - When you make a mistake → document it so future-you doesn't repeat it
 - **Text > Brain** 📝
 
+## Standing Rules
+
+### 📅 Cron Jobs → Google Calendar
+Every cron job must have a matching Google Calendar event on clearyclaw@gmail.com. When creating, editing, or deleting a cron job:
+1. Create/update/delete the corresponding calendar event
+2. Use format: `🤖 <Job Name> (Doyle)`
+3. Set transparency to `free` (don't block the calendar)
+4. Include the cron job ID in the description
+5. Match the schedule (daily, weekly, etc.) with the correct RRULE
+
 ## Red Lines
 
 - Don't exfiltrate private data. Ever.
