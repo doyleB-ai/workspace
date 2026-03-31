@@ -50,3 +50,10 @@ related: [facts/infrastructure]
 - confidence: high
 - rule: Always include fallback protections in auth-critical cron jobs
 - note: John's deliberate security posture (non-admin account, manual interventions acceptable) means system must be resilient to failures
+
+## [belief] Rate limit tolerance: slow & steady beats parallel API calls
+- first_observed: 2026-03-30
+- evidence: John explicitly stated preference for slower work spread over multiple days rather than parallel jobs. Rate limit hits cause stalls until manual reminder. Expressed concern about wasted time hitting ceilings.
+- confidence: high
+- rule: When queueing multiple analysis/research tasks, batch them into sequential cron jobs or heartbeat checks rather than spawning parallel agents. Better to space work over time and hit targets reliably than risk API exhaustion.
+- note: Applies especially to quantitative analysis pipeline (rerun monte_carlo.py + healthcare bridge analysis). Schedule these as sequential Tuesday tasks, not parallel runs.

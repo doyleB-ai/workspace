@@ -111,6 +111,13 @@ Structure:
 [List all sources used]
 ```
 
+## Presentation Standards
+All reports must meet institutional-grade quality. The client expects deliverables that look like they came from a top-tier advisory firm — not AI output.
+- Charts are mandatory for key data visualizations. Use matplotlib with professional styling (clean fonts, consistent color palette, proper labels).
+- Narrative prose is preferred over bullet-point dumps. Tables supplement the story.
+- Every section needs a clear verdict or recommendation callout.
+- If the report will be compiled into a client-facing document, it must be ready for that context.
+
 ## Constraints
 - **Be data-driven.** Every claim should be backed by a number or source.
 - **Show your work.** Include the Python code or calculations that produced your analysis.

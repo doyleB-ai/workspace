@@ -48,10 +48,22 @@ related: [facts/infrastructure, areas/nds-team]
 - Manages his own credentials — Doyle doesn't handle or store passwords
 
 ## Personal
-- Family: wife + 2 young boys
+- Family: wife (34 years old) + 2 young boys (age 3 & 1)
 - Lives in Seattle, WA
 - Interests:
   - Poker (played less since having kids)
   - Snowmobiling & snowboarding (winter)
   - Seattle sports: Seahawks, Mariners
 - Named Doyle after Doyle Brunson (poker legend) — calm, reads situations, doesn't waste words
+
+## Financial Profile
+- **Retirement target:** Age 55 (year 2045), 19 years out
+- **Withdrawal rate:** 3% ($180K/yr on ~$6-8M portfolio) [confirmed 2026-03-30]
+- **Mortgage:** $1M private family loan from in-laws (Oct 2021), $917K remaining, 3% interest, ~$53K/yr payments, balloon payment ~age 50 (~2040), ~$483K equity at $1.4M+ home value
+- **Emergency fund:** $21,848 ($20K checking + $1,848 HYSA)
+- **529 plans:** Child 1 (age 3) $17.5K, Child 2 (age 1) $8.6K, both $200/month contributions (plan to increase to $400/month)
+- **Equity concentration:** AMZN 15% of portfolio (~41% pre-diversification), L7 Senior Manager at Amazon
+- **Asset allocation target:** 85% equity (VTI/VXUS/AVUV/AVDV/VWO/AMZN) / 8% bonds (BND/SCHP) / 7% alternatives (VNQ/GLDM)
+- **Deployable capital:** ~$432K over 24 months (RSU sales, ESPP, 401k, savings)
+- **Tax situation:** Washington state (no state income tax), 18.8% effective federal rate
+- **Healthcare bridge gap:** Age 55-65 identified as critical unmodeled cost. Family of 4 (John + wife + 2 boys). Estimated $25-40K/yr ACA marketplace costs in 2045 dollars [identified 2026-03-30]
