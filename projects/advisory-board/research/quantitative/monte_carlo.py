@@ -90,14 +90,26 @@ TICKERS = {
     # Its weight is redistributed to QQQ in current portfolio
 }
 
-# Current portfolio weights (mapped to our asset classes)
+# ============================================================
+# PORTFOLIO SCENARIOS
+# ============================================================
+# Each scenario maps asset class names to target weights.
+# All weights are normalized automatically.
+
+def normalize_weights(w):
+    total = sum(w.values())
+    return {k: v/total for k, v in w.items()}
+
+SCENARIOS = {}
+
+# 1. CURRENT — John's actual holdings
 # AMZN: 35%, SPY/QQQ/401k: 31.5%, TSLA: 3.5%, Other stocks: 2.4%,
 # Bonds: 2.8%, Gold: 1.6%, Crypto: 0.6%, Cash: 1.8%, Schwab robo: 2.2%
-CURRENT_WEIGHTS = {
+SCENARIOS['Current'] = normalize_weights({
     'AMZN':      0.350,
     'US_Total':  0.330,   # SPY/QQQ/401k large cap + half of schwab robo
     'QQQ':       0.065,   # Other stocks + TSLA (merged for longer history) + crypto
-    'Bonds':     0.068,   # Bonds + Cash/HYSA + quarter of schwab robo 
+    'Bonds':     0.068,   # Bonds + Cash/HYSA + quarter of schwab robo
     'Gold':      0.016,
     'Intl_Dev':  0.007,   # Quarter of schwab robo
     'REITs':     0.000,
@@ -105,33 +117,94 @@ CURRENT_WEIGHTS = {
     'Intl_SC':   0.000,
     'EM':        0.000,
     'TIPS':      0.000,
-}
-# Note: TSLA (3.5%) merged into QQQ as both are high-vol tech. This extends
-# the bootstrap period from 2010 to 2003 (limited by AGG/GLD instead of TSLA).
-# GBTC (0.6%) also merged into QQQ. Schwab robo split across US/Intl/Bonds.
+})
 
-# Proposed portfolio weights
-PROPOSED_WEIGHTS = {
-    'US_Total':  0.350,
-    'AMZN':      0.150,
-    'Intl_Dev':  0.150,
-    'SCV':       0.100,
-    'Intl_SC':   0.050,
-    'EM':        0.050,
-    'REITs':     0.050,
-    'Bonds':     0.050,
-    'TIPS':      0.030,
-    'Gold':      0.020,
+# 2. CONSERVATIVE — Sell 500 AMZN shares over 12 months, redeploy to VTI/VXUS
+# AMZN drops from 35% to ~20%, freed capital goes to US Total + International
+SCENARIOS['Conservative'] = normalize_weights({
+    'AMZN':      0.200,
+    'US_Total':  0.400,   # Existing + new VTI purchases
+    'QQQ':       0.065,
+    'Intl_Dev':  0.100,   # New VXUS purchases
+    'Bonds':     0.068,
+    'Gold':      0.016,
+    'REITs':     0.000,
+    'SCV':       0.000,
+    'Intl_SC':   0.000,
+    'EM':        0.000,
+    'TIPS':      0.000,
+})
+
+# 3. DALIO ALL-WEATHER — Ray Dalio's risk-parity inspired allocation
+# 30% stocks, 55% long-term bonds/TIPS, 15% gold/commodities
+# Designed to perform in any economic regime
+SCENARIOS['All-Weather'] = normalize_weights({
+    'US_Total':  0.180,   # 18% US stocks
+    'Intl_Dev':  0.090,   # 9% international developed
+    'EM':        0.030,   # 3% emerging markets
+    'Bonds':     0.400,   # 40% long-term bonds (Dalio uses 40% LT bonds)
+    'TIPS':      0.150,   # 15% inflation-linked bonds
+    'Gold':      0.150,   # 15% gold/commodities
+    'AMZN':      0.000,
     'QQQ':       0.000,
+    'SCV':       0.000,
+    'Intl_SC':   0.000,
+    'REITs':     0.000,
+})
+
+# 4. BOGLEHEAD 3-FUND — Classic simplicity
+# VTI 60% / VXUS 30% / BND 10%
+SCENARIOS['Boglehead'] = normalize_weights({
+    'US_Total':  0.600,
+    'Intl_Dev':  0.300,
+    'Bonds':     0.100,
+    'AMZN':      0.000,
+    'QQQ':       0.000,
+    'SCV':       0.000,
+    'Intl_SC':   0.000,
+    'EM':        0.000,
+    'REITs':     0.000,
+    'TIPS':      0.000,
+    'Gold':      0.000,
+})
+
+# 5. BARBELL — Nassim Taleb philosophy
+# 70% aggressive equity (tilted growth + SCV) / 30% safest bonds
+# Nothing in between — either taking real risk or hiding in safety
+SCENARIOS['Barbell'] = normalize_weights({
+    'US_Total':  0.250,   # Core US
+    'QQQ':       0.150,   # Aggressive growth/tech
+    'SCV':       0.100,   # Small-cap value premium
+    'Intl_Dev':  0.100,   # International diversification
+    'EM':        0.050,   # Emerging markets
+    'Intl_SC':   0.050,   # International small cap
+    'Bonds':     0.200,   # Treasury bonds (safe haven)
+    'TIPS':      0.100,   # Inflation protection
+    'AMZN':      0.000,
+    'REITs':     0.000,
+    'Gold':      0.000,
+})
+
+# Scenario display colors for charts
+SCENARIO_COLORS = {
+    'Current':      CORAL,
+    'Conservative': GOLD,
+    'All-Weather':  TEAL,
+    'Boglehead':    LIGHT_BLUE,
+    'Barbell':      GREEN,
 }
 
-# Normalize weights
-def normalize_weights(w):
-    total = sum(w.values())
-    return {k: v/total for k, v in w.items()}
+SCENARIO_LIGHT_COLORS = {
+    'Current':      '#F5C6B8',
+    'Conservative': '#F0DCA8',
+    'All-Weather':  '#B8E0E0',
+    'Boglehead':    '#C4DAF0',
+    'Barbell':      '#C8E6C9',
+}
 
-CURRENT_WEIGHTS = normalize_weights(CURRENT_WEIGHTS)
-PROPOSED_WEIGHTS = normalize_weights(PROPOSED_WEIGHTS)
+# Keep backward compatibility for functions that reference these
+CURRENT_WEIGHTS = SCENARIOS['Current']
+PROPOSED_WEIGHTS = SCENARIOS['Boglehead']  # default comparison
 
 # ============================================================
 # DATA ACQUISITION
@@ -243,47 +316,34 @@ def compute_max_drawdown_series(returns):
 # MODEL 1: MONTE CARLO SIMULATION
 # ============================================================
 
-def run_monte_carlo(returns_df, common_returns, weights_current, weights_proposed):
+def run_monte_carlo(returns_df, common_returns, scenarios_dict):
     """
     Bootstrap Monte Carlo simulation using historical returns.
     Preserves fat tails, correlations, and real-world distribution.
+    Runs all portfolio scenarios from scenarios_dict.
     """
     print("\n" + "="*60)
-    print("MODEL 1: MONTE CARLO SIMULATION (10,000 paths)")
+    print(f"MODEL 1: MONTE CARLO SIMULATION ({N_SIMULATIONS:,} paths × {len(scenarios_dict)} scenarios)")
     print("="*60)
     
-    # Build separate bootstrap pools for each portfolio to maximize history
-    # Only require overlap among assets with >0 weight in that portfolio
+    # Build separate bootstrap pools for each scenario to maximize history
+    scenario_configs = {}  # label -> (w_vec, boot_matrix, n_hist, asset_list)
+    all_assets_set = set()
     
-    current_assets = [a for a in weights_current if weights_current[a] > 0 and a in returns_df.columns]
-    proposed_assets = [a for a in weights_proposed if weights_proposed[a] > 0 and a in returns_df.columns]
-    all_assets = sorted(set(current_assets + proposed_assets))
+    for label, weights in scenarios_dict.items():
+        assets = [a for a in weights if weights[a] > 0 and a in returns_df.columns]
+        all_assets_set.update(assets)
+        boot = returns_df[assets].dropna()
+        w_vec = np.array([weights.get(a, 0) for a in assets])
+        w_vec = w_vec / w_vec.sum()
+        scenario_configs[label] = (w_vec, boot.values, len(boot), assets)
+        print(f"{label} bootstrap: {len(boot)} months ({boot.index[0].date()} to {boot.index[-1].date()})")
     
-    # Per-portfolio bootstrap pools
-    current_boot = returns_df[current_assets].dropna()
-    proposed_boot = returns_df[proposed_assets].dropna()
-    
-    print(f"Current portfolio bootstrap: {len(current_boot)} months ({current_boot.index[0].date()} to {current_boot.index[-1].date()})")
-    print(f"Proposed portfolio bootstrap: {len(proposed_boot)} months ({proposed_boot.index[0].date()} to {proposed_boot.index[-1].date()})")
-    
-    # Build weight vectors aligned to each portfolio's assets
-    current_w_vec = np.array([weights_current.get(a, 0) for a in current_assets])
-    current_w_vec = current_w_vec / current_w_vec.sum()
-    
-    proposed_w_vec = np.array([weights_proposed.get(a, 0) for a in proposed_assets])
-    proposed_w_vec = proposed_w_vec / proposed_w_vec.sum()
-    
-    # Also build all_assets-aligned weight vectors for downstream use
-    current_w = np.array([weights_current.get(a, 0) for a in all_assets])
-    current_w = current_w / current_w.sum()
-    proposed_w = np.array([weights_proposed.get(a, 0) for a in all_assets])
-    proposed_w = proposed_w / proposed_w.sum()
-    
+    all_assets = sorted(all_assets_set)
     results = {}
     
     portfolio_configs = [
-        ('Current', current_w_vec, current_boot.values, len(current_boot)),
-        ('Proposed', proposed_w_vec, proposed_boot.values, len(proposed_boot)),
+        (label, cfg[0], cfg[1], cfg[2]) for label, cfg in scenario_configs.items()
     ]
     
     for label, weights, boot_matrix, n_hist in portfolio_configs:
@@ -389,25 +449,27 @@ def run_monte_carlo(returns_df, common_returns, weights_current, weights_propose
         print(f"  P(below $500K ever): {results[label]['prob_below_500K']:.1%}")
         print(f"  Median max drawdown: {np.median(max_drawdowns):.1%}")
     
-    return (results, all_assets, current_w, proposed_w,
-            current_assets, proposed_assets,
-            current_boot.values, proposed_boot.values,
-            len(current_boot), len(proposed_boot),
-            current_w_vec, proposed_w_vec)
+    return results, all_assets, scenario_configs
 
 
 def plot_monte_carlo(results):
-    """Generate fan/ribbon chart for Monte Carlo results."""
-    fig, axes = plt.subplots(1, 2, figsize=(16, 7), sharey=True)
+    """Generate fan/ribbon chart for Monte Carlo results — one panel per scenario."""
+    n_scenarios = len(results)
+    # Layout: up to 3 columns
+    n_cols = min(3, n_scenarios)
+    n_rows = (n_scenarios + n_cols - 1) // n_cols
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(7*n_cols, 7*n_rows), sharey=True, squeeze=False)
     
     ages = np.arange(36, 56)
     years = np.arange(0, 20)
     
-    for idx, (label, color_main, color_light) in enumerate([
-        ('Current', CORAL, '#F5C6B8'),
-        ('Proposed', TEAL, '#B8E0E0')
-    ]):
-        ax = axes[idx]
+    scenario_labels = list(results.keys())
+    
+    for idx, label in enumerate(scenario_labels):
+        row, col = divmod(idx, n_cols)
+        ax = axes[row][col]
+        color_main = SCENARIO_COLORS.get(label, TEAL)
+        
         r = results[label]
         p = r['percentiles']
         
@@ -418,52 +480,80 @@ def plot_monte_carlo(results):
         p90 = [p[y]['p90'] for y in years]
         
         ax.fill_between(ages, [x/1e6 for x in p10], [x/1e6 for x in p90], 
-                        alpha=0.15, color=color_main, label='10th-90th percentile')
+                        alpha=0.15, color=color_main, label='10th-90th %ile')
         ax.fill_between(ages, [x/1e6 for x in p25], [x/1e6 for x in p75], 
-                        alpha=0.3, color=color_main, label='25th-75th percentile')
+                        alpha=0.3, color=color_main, label='25th-75th %ile')
         ax.plot(ages, [x/1e6 for x in med], color=color_main, linewidth=2.5, 
                 label=f'Median: ${med[-1]/1e6:.1f}M')
         
-        # Mark balloon payment — both panels
+        # Mark balloon payment
         ax.axvline(x=50, color=MED_GRAY, linestyle='--', alpha=0.7)
-        # Place annotation at ~20% of y range for visibility
         y_pos = max(med) * 0.15
-        ax.annotate('$400K Balloon\nPayment (Age 50)', xy=(50, y_pos), 
-                    fontsize=10, fontweight='bold', ha='center', va='bottom', color=NAVY,
+        ax.annotate('$400K Balloon\n(Age 50)', xy=(50, y_pos), 
+                    fontsize=9, fontweight='bold', ha='center', va='bottom', color=NAVY,
                     bbox=dict(boxstyle='round,pad=0.3', facecolor='lightyellow', alpha=0.8))
         
         ax.set_xlabel('Age')
-        ax.set_title(f'{label} Portfolio', fontsize=14, fontweight='bold', color=NAVY)
-        ax.legend(loc='upper left', fontsize=9)
+        ax.set_title(f'{label}', fontsize=14, fontweight='bold', color=NAVY)
+        ax.legend(loc='upper left', fontsize=8)
         ax.yaxis.set_major_formatter(mticker.FuncFormatter(lambda x, p: f'${x:.0f}M'))
         ax.set_xlim(36, 55)
+        
+        # Add key stats in lower right
+        ax.text(0.97, 0.03, 
+                f"P(>$5M): {r['prob_5M']:.0%}\nMax DD: {np.median(r['max_drawdowns']):.0%}",
+                transform=ax.transAxes, fontsize=9, ha='right', va='bottom',
+                bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
     
-    axes[0].set_ylabel('Portfolio Value')
+    # Hide unused panels
+    for idx in range(n_scenarios, n_rows * n_cols):
+        row, col = divmod(idx, n_cols)
+        axes[row][col].set_visible(False)
     
-    fig.suptitle('Monte Carlo Simulation: 10,000 Paths Over 19 Years', 
+    axes[0][0].set_ylabel('Portfolio Value')
+    
+    fig.suptitle(f'Monte Carlo Simulation: {N_SIMULATIONS:,} Paths Over 19 Years — {n_scenarios} Scenarios', 
                  fontsize=16, fontweight='bold', color=NAVY, y=1.02)
     
-    # Add comparison stats at bottom (escape $ for matplotlib)
-    c = results['Current']
-    p = results['Proposed']
-    fig.text(0.5, -0.06, 
-             f"Current median: \\${c['median_final']/1e6:.1f}M  |  Proposed median: \\${p['median_final']/1e6:.1f}M  |  "
-             f"Current P(>\\$5M): {c['prob_5M']:.0%}  |  Proposed P(>\\$5M): {p['prob_5M']:.0%}",
-             ha='center', fontsize=10, color=NAVY)
+    # Also generate a single overlay chart for easy comparison
+    fig2, ax2 = plt.subplots(figsize=(14, 8))
+    for label in scenario_labels:
+        r = results[label]
+        p = r['percentiles']
+        med = [p[y]['median'] for y in years]
+        color = SCENARIO_COLORS.get(label, TEAL)
+        ax2.plot(ages, [x/1e6 for x in med], color=color, linewidth=2.5, label=f'{label}: ${med[-1]/1e6:.1f}M')
+        p10 = [p[y]['p10'] for y in years]
+        p90 = [p[y]['p90'] for y in years]
+        ax2.fill_between(ages, [x/1e6 for x in p10], [x/1e6 for x in p90], alpha=0.08, color=color)
+    
+    ax2.axvline(x=50, color=MED_GRAY, linestyle='--', alpha=0.7)
+    ax2.annotate('$400K Balloon (Age 50)', xy=(50, 0.5), fontsize=10, fontweight='bold',
+                 ha='center', va='bottom', color=NAVY,
+                 bbox=dict(boxstyle='round,pad=0.3', facecolor='lightyellow', alpha=0.8))
+    ax2.set_xlabel('Age')
+    ax2.set_ylabel('Portfolio Value')
+    ax2.set_title('Monte Carlo Median Paths: All Scenarios Compared', fontsize=16, fontweight='bold', color=NAVY)
+    ax2.legend(loc='upper left', fontsize=11)
+    ax2.yaxis.set_major_formatter(mticker.FuncFormatter(lambda x, p: f'${x:.0f}M'))
+    ax2.set_xlim(36, 55)
     
     plt.tight_layout()
     fig.savefig(os.path.join(CHARTS_DIR, 'mc-real.png'), dpi=150, bbox_inches='tight',
                 facecolor='white', edgecolor='none')
-    plt.close()
+    fig2.savefig(os.path.join(CHARTS_DIR, 'mc-overlay.png'), dpi=150, bbox_inches='tight',
+                 facecolor='white', edgecolor='none')
+    plt.close('all')
     print("\nSaved: reports/charts/mc-real.png")
+    print("Saved: reports/charts/mc-overlay.png")
 
 
 # ============================================================
 # MODEL 2: HISTORICAL STRESS TESTS
 # ============================================================
 
-def run_stress_tests(all_prices, weights_current_dict, weights_proposed_dict):
-    """Run both portfolios through actual historical crises."""
+def run_stress_tests(all_prices, scenarios_dict):
+    """Run all portfolio scenarios through actual historical crises."""
     print("\n" + "="*60)
     print("MODEL 2: HISTORICAL STRESS TESTS")
     print("="*60)
@@ -481,7 +571,7 @@ def run_stress_tests(all_prices, weights_current_dict, weights_proposed_dict):
         print(f"\n{crisis_name.replace(chr(10), ' ')}:")
         
         crisis_results = {}
-        for label, weights in [('Current', weights_current_dict), ('Proposed', weights_proposed_dict)]:
+        for label, weights in scenarios_dict.items():
             # Compute portfolio return through the crisis using available prices
             portfolio_value = 100  # Normalize to 100
             peak_value = 100
@@ -593,61 +683,53 @@ def run_stress_tests(all_prices, weights_current_dict, weights_proposed_dict):
 
 
 def plot_stress_tests(stress_results):
-    """Generate stress test comparison chart."""
-    fig, ax = plt.subplots(figsize=(12, 7))
+    """Generate stress test comparison chart for N scenarios."""
+    fig, ax = plt.subplots(figsize=(16, 8))
     
     crises = list(stress_results.keys())
+    # Get all scenario labels from first crisis
+    first_crisis = stress_results[crises[0]]
+    scenario_labels = [k for k in first_crisis.keys()]
+    n_scenarios = len(scenario_labels)
+    
     x = np.arange(len(crises))
-    width = 0.35
+    total_width = 0.8
+    bar_width = total_width / n_scenarios
     
-    current_dds = []
-    proposed_dds = []
-    
-    for crisis in crises:
-        c = stress_results[crisis].get('Current', {})
-        p = stress_results[crisis].get('Proposed', {})
-        current_dds.append(abs(c.get('max_dd', 0) or 0) * 100)
-        proposed_dds.append(abs(p.get('max_dd', 0) or 0) * 100)
-    
-    bars1 = ax.bar(x - width/2, current_dds, width, label='Current (Concentrated)', 
-                   color=CORAL, edgecolor='white', linewidth=0.5)
-    bars2 = ax.bar(x + width/2, proposed_dds, width, label='Proposed (Diversified)', 
-                   color=TEAL, edgecolor='white', linewidth=0.5)
-    
-    # Add value labels
-    for bar in bars1:
-        height = bar.get_height()
-        ax.text(bar.get_x() + bar.get_width()/2., height + 0.5,
-                f'{height:.1f}%', ha='center', va='bottom', fontsize=10, fontweight='bold', color=CORAL)
-    for bar in bars2:
-        height = bar.get_height()
-        ax.text(bar.get_x() + bar.get_width()/2., height + 0.5,
-                f'{height:.1f}%', ha='center', va='bottom', fontsize=10, fontweight='bold', color=TEAL)
+    for s_idx, label in enumerate(scenario_labels):
+        dds = []
+        for crisis in crises:
+            data = stress_results[crisis].get(label, {})
+            dds.append(abs(data.get('max_dd', 0) or 0) * 100)
+        
+        offset = (s_idx - (n_scenarios - 1) / 2) * bar_width
+        color = SCENARIO_COLORS.get(label, TEAL)
+        bars = ax.bar(x + offset, dds, bar_width * 0.9, label=label, 
+                      color=color, edgecolor='white', linewidth=0.5)
+        
+        # Value labels on top
+        for bar in bars:
+            height = bar.get_height()
+            if height > 3:  # Only label bars > 3%
+                ax.text(bar.get_x() + bar.get_width()/2., height + 0.5,
+                        f'{height:.0f}%', ha='center', va='bottom', fontsize=7, 
+                        fontweight='bold', color=color)
     
     ax.set_xlabel('')
     ax.set_ylabel('Maximum Drawdown (%)')
     ax.set_title('Historical Stress Tests: Maximum Drawdown by Crisis', 
                  fontsize=14, fontweight='bold', color=NAVY)
     ax.set_xticks(x)
-    # Clean up crisis names — remove newlines for x-axis
     clean_labels = [c.replace('\n', ' ') for c in crises]
     ax.set_xticklabels(clean_labels, fontsize=10, ha='center')
-    ax.legend(fontsize=11)
-    y_max = max(max(current_dds), max(proposed_dds))
-    ax.set_ylim(0, y_max * 1.25)
+    ax.legend(fontsize=10, ncol=min(n_scenarios, 3))
     
-    # Add dollar loss annotations INSIDE the bars (not below x-axis)
-    for i, crisis in enumerate(crises):
-        c = stress_results[crisis].get('Current', {})
-        p = stress_results[crisis].get('Proposed', {})
-        c_loss = c.get('dollar_loss', 0) or 0
-        p_loss = p.get('dollar_loss', 0) or 0
-        if c_loss > 0:
-            ax.text(i - width/2, current_dds[i] / 2, f'−${c_loss/1000:.0f}K', 
-                    ha='center', va='center', fontsize=8, color='white', fontweight='bold')
-        if p_loss > 0:
-            ax.text(i + width/2, proposed_dds[i] / 2, f'−${p_loss/1000:.0f}K', 
-                    ha='center', va='center', fontsize=8, color='white', fontweight='bold')
+    y_max = 0
+    for crisis in crises:
+        for label in scenario_labels:
+            dd = abs(stress_results[crisis].get(label, {}).get('max_dd', 0) or 0) * 100
+            y_max = max(y_max, dd)
+    ax.set_ylim(0, y_max * 1.2)
     
     plt.tight_layout()
     fig.savefig(os.path.join(CHARTS_DIR, 'stress-test.png'), dpi=150, bbox_inches='tight',
@@ -660,31 +742,20 @@ def plot_stress_tests(stress_results):
 # MODEL 3: SENSITIVITY ANALYSIS
 # ============================================================
 
-def run_sensitivity_analysis(returns_df, common_returns, all_assets, current_w, proposed_w,
-                             current_assets, proposed_assets, current_boot_matrix, proposed_boot_matrix,
-                             n_hist_current, n_hist_proposed):
-    """Test how outcomes change with varying assumptions."""
+def run_sensitivity_analysis(returns_df, common_returns, all_assets, scenario_configs):
+    """Test how outcomes change with varying assumptions for all scenarios."""
     print("\n" + "="*60)
     print("MODEL 3: SENSITIVITY ANALYSIS")
     print("="*60)
     
     N_SENS = 3000  # Fewer sims for sensitivity (still statistically significant)
     
-    # Map portfolio label to its bootstrap data
-    # Build per-portfolio weight vectors aligned to their own asset lists
-    current_w_vec = np.array([CURRENT_WEIGHTS.get(a, 0) for a in current_assets])
-    current_w_vec = current_w_vec / current_w_vec.sum()
-    proposed_w_vec = np.array([PROPOSED_WEIGHTS.get(a, 0) for a in proposed_assets])
-    proposed_w_vec = proposed_w_vec / proposed_w_vec.sum()
-    
-    boot_configs = {
-        'Current': (current_assets, current_boot_matrix, n_hist_current),
-        'Proposed': (proposed_assets, proposed_boot_matrix, n_hist_proposed),
-    }
-    weight_configs = {
-        'Current': current_w_vec,
-        'Proposed': proposed_w_vec,
-    }
+    # Build boot_configs and weight_configs from scenario_configs
+    boot_configs = {}
+    weight_configs = {}
+    for label, (w_vec, boot_mat, n_hist, asset_list) in scenario_configs.items():
+        boot_configs[label] = (asset_list, boot_mat, n_hist)
+        weight_configs[label] = w_vec
     
     def run_quick_mc(port_label, n_sims, monthly_adj=0, contribution_mult=1.0, 
                      inflation_rate=0.02, amzn_override=None, amzn_months=0,
@@ -755,6 +826,7 @@ def run_sensitivity_analysis(returns_df, common_returns, all_assets, current_w, 
         return np.median(final_values)
     
     scenarios = {}
+    port_labels = list(boot_configs.keys())
     
     # 1. Return assumptions
     print("\nReturn sensitivity...")
@@ -764,7 +836,7 @@ def run_sensitivity_analysis(returns_df, common_returns, all_assets, current_w, 
         ('Bull (+2%)', 0.02, False),
         ('Japan (flat 15yr)', 0, True),
     ]:
-        for port_label in ['Current', 'Proposed']:
+        for port_label in port_labels:
             key = f"Returns: {label_suffix} | {port_label}"
             val = run_quick_mc(port_label, N_SENS, equity_adj=equity_adj, japan_scenario=japan)
             scenarios[key] = val
@@ -777,13 +849,13 @@ def run_sensitivity_analysis(returns_df, common_returns, all_assets, current_w, 
         ('Reduced (−30%)', 0.7),
         ('Increased ($130K/yr)', 1.625),
     ]:
-        for port_label in ['Current', 'Proposed']:
+        for port_label in port_labels:
             key = f"Contributions: {label_suffix} | {port_label}"
             val = run_quick_mc(port_label, N_SENS, contribution_mult=mult)
             scenarios[key] = val
             print(f"  {key}: ${val/1e6:.2f}M (real)")
     
-    # 3. AMZN scenarios
+    # 3. AMZN scenarios (only for portfolios that hold AMZN)
     print("\nAMZN-specific scenarios...")
     amzn_scenarios = [
         ('AMZN −50% (12mo)', -0.50, 12),
@@ -791,7 +863,11 @@ def run_sensitivity_analysis(returns_df, common_returns, all_assets, current_w, 
         ('AMZN +100% (3yr)', 1.0, 36),
     ]
     for label_suffix, amzn_ret, amzn_months in amzn_scenarios:
-        for port_label in ['Current', 'Proposed']:
+        for port_label in port_labels:
+            # Check if this portfolio has AMZN
+            assets = boot_configs[port_label][0]
+            if 'AMZN' not in assets:
+                continue
             key = f"AMZN: {label_suffix} | {port_label}"
             val = run_quick_mc(port_label, N_SENS, amzn_override=amzn_ret, amzn_months=amzn_months)
             scenarios[key] = val
@@ -804,7 +880,7 @@ def run_sensitivity_analysis(returns_df, common_returns, all_assets, current_w, 
         ('4% sustained', 0.04),
         ('6% then normalize', 0.045),  # ~4.5% effective over 19 years
     ]:
-        for port_label in ['Current', 'Proposed']:
+        for port_label in port_labels:
             key = f"Inflation: {label_suffix} | {port_label}"
             val = run_quick_mc(port_label, N_SENS, inflation_rate=infl)
             scenarios[key] = val
