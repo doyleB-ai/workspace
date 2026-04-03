@@ -1,7 +1,6 @@
 {
   "profile": "anthropic:manual",
-  "timestamp": "2026-03-31T12:00:00Z",
-  "status": "healthy",
-  "action": "none",
-  "details": "Subscription auth (anthropic:manual) is primary. Primary model is already Sonnet. No changes required."
+  "timestamp": "2026-04-01T12:00:00Z",
+  "status": "active",
+  "action": "none"
 }

@@ -890,89 +890,69 @@ def run_sensitivity_analysis(returns_df, common_returns, all_assets, scenario_co
 
 
 def plot_sensitivity(scenarios):
-    """Generate tornado chart showing sensitivity of outcomes."""
-    fig, ax = plt.subplots(figsize=(14, 10))
-    
-    # Group scenarios for tornado chart
-    # Show difference from base case for proposed portfolio
-    base_proposed = None
-    base_current = None
-    
-    # Find base cases
+    """Generate grouped heatmap/bar chart for sensitivity across all scenarios."""
+    # Find all portfolio labels and base cases
+    base_values = {}
     for key, val in scenarios.items():
-        if 'Returns: Base' in key and 'Proposed' in key:
-            base_proposed = val
-        if 'Returns: Base' in key and 'Current' in key:
-            base_current = val
+        if 'Returns: Base' in key:
+            port_label = key.split(' | ')[-1]
+            base_values[port_label] = val
     
-    if base_proposed is None or base_current is None:
-        print("Warning: Could not find base cases for tornado chart")
+    port_labels = list(base_values.keys())
+    if not port_labels:
+        print("Warning: Could not find base cases for sensitivity chart")
         return
     
-    # Build tornado data: impact on proposed portfolio
-    tornado_items = []
+    # Define sensitivity tests to show
+    sensitivity_tests = [
+        ('Bear market (−2%)', 'Returns: Bear (-2%)'),
+        ('Bull market (+2%)', 'Returns: Bull (+2%)'),
+        ('Japan scenario', 'Returns: Japan (flat 15yr)'),
+        ('Income −30%', 'Contributions: Reduced (−30%)'),
+        ('Income +60%', 'Contributions: Increased ($130K/yr)'),
+        ('Inflation 4%', 'Inflation: 4% sustained'),
+        ('Inflation 6%', 'Inflation: 6% then normalize'),
+        ('AMZN −50% (12mo)', 'AMZN: AMZN −50% (12mo)'),
+        ('AMZN flat (5yr)', 'AMZN: AMZN flat (5yr)'),
+        ('AMZN +100% (3yr)', 'AMZN: AMZN +100% (3yr)'),
+    ]
     
-    scenario_groups = {
-        'AMZN −50% (12mo)': 'AMZN: AMZN −50% (12mo)',
-        'AMZN +100% (3yr)': 'AMZN: AMZN +100% (3yr)',
-        'AMZN flat (5yr)': 'AMZN: AMZN flat (5yr)',
-        'Bear market (−2%)': 'Returns: Bear (-2%)',
-        'Bull market (+2%)': 'Returns: Bull (+2%)',
-        'Japan scenario': 'Returns: Japan (flat 15yr)',
-        'Income −30%': 'Contributions: Reduced (−30%)',
-        'Income +60%': 'Contributions: Increased ($130K/yr)',
-        'Inflation 4%': 'Inflation: 4% sustained',
-        'Inflation 6%': 'Inflation: 6% then normalize',
-    }
+    fig, ax = plt.subplots(figsize=(16, 10))
     
-    for display_name, key_prefix in scenario_groups.items():
-        # Get both current and proposed
-        current_val = scenarios.get(f"{key_prefix} | Current", base_current)
-        proposed_val = scenarios.get(f"{key_prefix} | Proposed", base_proposed)
+    n_tests = len(sensitivity_tests)
+    n_ports = len(port_labels)
+    bar_height = 0.8 / n_ports
+    
+    for p_idx, port_label in enumerate(port_labels):
+        base = base_values[port_label]
+        color = SCENARIO_COLORS.get(port_label, TEAL)
+        impacts = []
+        for display_name, key_prefix in sensitivity_tests:
+            val = scenarios.get(f"{key_prefix} | {port_label}")
+            if val is not None:
+                impacts.append((val - base) / 1e6)
+            else:
+                impacts.append(0)
         
-        # Impact = difference from base for proposed
-        impact_proposed = (proposed_val - base_proposed) / 1e6
-        impact_current = (current_val - base_current) / 1e6
+        y_positions = np.arange(n_tests) + (p_idx - (n_ports - 1) / 2) * bar_height
+        bars = ax.barh(y_positions, impacts, bar_height * 0.9, color=color, alpha=0.8,
+                       label=f'{port_label} (base ${base/1e6:.1f}M)')
         
-        tornado_items.append({
-            'name': display_name,
-            'proposed_impact': impact_proposed,
-            'current_impact': impact_current,
-        })
+        # Value labels
+        for y, val in zip(y_positions, impacts):
+            if abs(val) > 0.05:
+                ha = 'left' if val >= 0 else 'right'
+                x_off = 0.03 if val >= 0 else -0.03
+                ax.text(val + x_off, y, f'{val:+.1f}M', ha=ha, va='center', 
+                        fontsize=6, color=color, fontweight='bold')
     
-    # Sort by absolute impact (proposed)
-    tornado_items.sort(key=lambda x: abs(x['proposed_impact']))
-    
-    y_pos = np.arange(len(tornado_items))
-    
-    for i, item in enumerate(tornado_items):
-        ax.barh(i - 0.17, item['current_impact'], 0.34, color=CORAL, alpha=0.8, 
-                label='Current' if i == 0 else '')
-        ax.barh(i + 0.17, item['proposed_impact'], 0.34, color=TEAL, alpha=0.8,
-                label='Proposed' if i == 0 else '')
-    
-    ax.set_yticks(y_pos)
-    ax.set_yticklabels([item['name'] for item in tornado_items])
+    ax.set_yticks(np.arange(n_tests))
+    ax.set_yticklabels([t[0] for t in sensitivity_tests], fontsize=10)
     ax.set_xlabel('Impact on Median Outcome ($M, real)')
     ax.set_title('Sensitivity Analysis: Impact on Retirement Portfolio Value\n(Difference from Base Case, Inflation-Adjusted)',
                  fontsize=14, fontweight='bold', color=NAVY)
     ax.axvline(x=0, color=NAVY, linewidth=2)
-    ax.legend(loc='lower right', fontsize=11)
-    
-    # Add value labels at end of each bar
-    for i, item in enumerate(tornado_items):
-        for offset, val, color in [(-0.17, item['current_impact'], CORAL), 
-                                    (0.17, item['proposed_impact'], TEAL)]:
-            if abs(val) > 0.05:
-                ha = 'left' if val >= 0 else 'right'
-                x_offset = 0.05 if val >= 0 else -0.05
-                ax.text(val + x_offset, i + offset, f'{val:+.1f}M', 
-                        ha=ha, va='center', fontsize=7, color=color, fontweight='bold')
-    
-    # Add base case annotation
-    ax.text(0.02, 0.98, f'Base: Current \\${base_current/1e6:.1f}M | Proposed \\${base_proposed/1e6:.1f}M (real)',
-            transform=ax.transAxes, fontsize=10, verticalalignment='top',
-            bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
+    ax.legend(loc='lower right', fontsize=9)
     
     plt.tight_layout()
     fig.savefig(os.path.join(CHARTS_DIR, 'sensitivity.png'), dpi=150, bbox_inches='tight',
@@ -985,114 +965,38 @@ def plot_sensitivity(scenarios):
 # MODEL 4: SEQUENCE OF RETURNS RISK
 # ============================================================
 
-def run_sequence_risk(returns_df, common_returns, all_assets, current_w, proposed_w, mc_results,
-                      proposed_assets, proposed_boot_matrix, n_hist_proposed,
-                      current_assets, current_boot_matrix, n_hist_current):
-    """Model retirement withdrawal phase with sequence of returns risk."""
+def run_sequence_risk(returns_df, common_returns, all_assets, scenario_configs, mc_results):
+    """Model retirement withdrawal phase with sequence of returns risk for all scenarios."""
     print("\n" + "="*60)
-    print("MODEL 4: SEQUENCE OF RETURNS RISK")
+    print(f"MODEL 4: SEQUENCE OF RETURNS RISK ({len(scenario_configs)} scenarios)")
     print("="*60)
-    
-    # Use proposed portfolio's bootstrap for retirement sims
-    boot_matrix = proposed_boot_matrix
-    n_hist = n_hist_proposed
-    
-    # Use projected median value at age 55 from proposed portfolio
-    starting_value = mc_results['Proposed']['percentiles'][19]['median']
-    print(f"\nStarting retirement value (proposed median at 55): ${starting_value:,.0f}")
     
     RETIREMENT_MONTHS = RETIREMENT_YEARS * 12  # 420 months (35 years)
     N_RETIREMENT_SIMS = 10_000
-    INITIAL_WITHDRAWAL = ANNUAL_EXPENSES  # $180K/year
     INFLATION = 0.03  # 3% average inflation during retirement
     
     withdrawal_strategies = {}
     
-    # Strategy 0: Actual expense target ($180K/year, inflation-adjusted)
-    print("\nStrategy 0: Actual Expenses ($180K/year)...")
-    
-    for port_label, weights, boot_mat, n_h in [
-        ('Proposed', proposed_w, proposed_boot_matrix, n_hist_proposed),
-        ('Current', current_w_local if 'current_w_local' in dir() else current_w, current_boot_matrix, n_hist_current)
-    ]:
-        # Fix weight alignment for this bootstrap matrix
-        if port_label == 'Proposed':
-            w_local = np.array([PROPOSED_WEIGHTS.get(a, 0) for a in proposed_assets])
-        else:
-            w_local = np.array([CURRENT_WEIGHTS.get(a, 0) for a in current_assets])
-        w_local = w_local / w_local.sum()
-        
-        sv = mc_results[port_label]['percentiles'][19]['median']
+    def _run_withdrawal_sim(port_label, w_vec, boot_mat, n_hist, starting_val, 
+                            strategy='fixed', annual_amount=ANNUAL_EXPENSES,
+                            guardrails=False, bond_tent=False, asset_list=None):
+        """Generic withdrawal simulation. Returns dict with paths, ruin_rate, ruin_ages."""
         paths = np.zeros((N_RETIREMENT_SIMS, RETIREMENT_MONTHS + 1))
-        paths[:, 0] = sv
+        paths[:, 0] = starting_val
         ruin_count = 0
         ruin_ages = []
         
-        for sim in range(N_RETIREMENT_SIMS):
-            sample_indices = np.random.randint(0, n_h, size=RETIREMENT_MONTHS)
-            sampled_returns = boot_mat[sample_indices]
-            
-            value = sv
-            asset_values = w_local * value
-            ruined = False
-            
-            for month in range(RETIREMENT_MONTHS):
-                if value <= 0:
-                    paths[sim, month + 1:] = 0
-                    if not ruined:
-                        ruin_count += 1
-                        ruin_ages.append(55 + month / 12)
-                        ruined = True
-                    break
-                
-                monthly_rets = sampled_returns[month]
-                asset_values = asset_values * (1 + monthly_rets)
-                
-                year = month // 12
-                adj_withdrawal = ANNUAL_EXPENSES * (1 + INFLATION) ** year / 12
-                
-                total = asset_values.sum()
-                if total > adj_withdrawal:
-                    asset_values -= w_local * adj_withdrawal
-                else:
-                    asset_values = w_local * 0
-                
-                if (month + 1) % 12 == 0:
-                    total = asset_values.sum()
-                    asset_values = w_local * max(total, 0)
-                
-                value = max(asset_values.sum(), 0)
-                paths[sim, month + 1] = value
-        
-        ruin_rate = ruin_count / N_RETIREMENT_SIMS
-        print(f"  {port_label} - $180K/yr: Ruin rate = {ruin_rate:.1%}")
-        if ruin_ages:
-            print(f"    Median ruin age: {np.median(ruin_ages):.1f}")
-        
-        withdrawal_strategies[f'$180K/yr | {port_label}'] = {
-            'paths': paths,
-            'ruin_rate': ruin_rate,
-            'ruin_ages': ruin_ages,
-            'starting_value': sv,
-        }
-    
-    # Strategy 1: Fixed 4% rule (inflation-adjusted)
-    print("\nStrategy 1: Fixed 4% Rule...")
-    initial_4pct = starting_value * 0.04
-    
-    for port_label, weights in [('Proposed', proposed_w)]:
-        paths = np.zeros((N_RETIREMENT_SIMS, RETIREMENT_MONTHS + 1))
-        paths[:, 0] = starting_value
-        ruin_count = 0
-        ruin_ages = []
+        # Bond tent setup
+        bonds_idx = asset_list.index('Bonds') if (bond_tent and asset_list and 'Bonds' in asset_list) else None
+        tips_idx = asset_list.index('TIPS') if (bond_tent and asset_list and 'TIPS' in asset_list) else None
         
         for sim in range(N_RETIREMENT_SIMS):
             sample_indices = np.random.randint(0, n_hist, size=RETIREMENT_MONTHS)
-            sampled_returns = boot_matrix[sample_indices]
+            sampled_returns = boot_mat[sample_indices]
             
-            value = starting_value
-            asset_values = weights * value
-            annual_withdrawal = initial_4pct
+            value = starting_val
+            asset_values = w_vec * value
+            current_withdrawal = annual_amount
             ruined = False
             
             for month in range(RETIREMENT_MONTHS):
@@ -1104,337 +1008,178 @@ def run_sequence_risk(returns_df, common_returns, all_assets, current_w, propose
                         ruined = True
                     break
                 
+                year = month // 12
+                weights_this_month = w_vec
+                
+                # Bond tent weight adjustment
+                if bond_tent and bonds_idx is not None:
+                    if year <= 5:
+                        bond_alloc = 0.40
+                    elif year <= 10:
+                        bond_alloc = 0.40 - (year - 5) * 0.064
+                    else:
+                        bond_alloc = 0.08
+                    
+                    tent_w = w_vec.copy()
+                    current_bond = tent_w[bonds_idx]
+                    if tips_idx is not None:
+                        current_bond += tent_w[tips_idx]
+                    extra = bond_alloc - current_bond
+                    if extra > 0:
+                        eq_mask = np.ones(len(w_vec), dtype=bool)
+                        if bonds_idx is not None: eq_mask[bonds_idx] = False
+                        if tips_idx is not None: eq_mask[tips_idx] = False
+                        eq_total = tent_w[eq_mask].sum()
+                        if eq_total > extra:
+                            tent_w[eq_mask] *= (eq_total - extra) / eq_total
+                            tent_w[bonds_idx] = bond_alloc * 0.7
+                            if tips_idx is not None:
+                                tent_w[tips_idx] = bond_alloc * 0.3
+                    weights_this_month = tent_w / tent_w.sum()
+                    asset_values = weights_this_month * value
+                
                 monthly_rets = sampled_returns[month]
                 asset_values = asset_values * (1 + monthly_rets)
-                
-                # Monthly withdrawal (inflation-adjusted annually)
-                year = month // 12
-                adj_withdrawal = annual_withdrawal * (1 + INFLATION) ** year / 12
-                
                 total = asset_values.sum()
-                if total > adj_withdrawal:
-                    asset_values -= weights * adj_withdrawal
+                
+                # Guardrail adjustments
+                if guardrails and month > 0 and month % 12 == 0:
+                    inflation_adj = (1 + INFLATION) ** year
+                    wd_rate = current_withdrawal / total if total > 0 else 1
+                    if wd_rate > 0.06:
+                        current_withdrawal *= 0.90
+                    elif wd_rate < 0.035:
+                        current_withdrawal *= 1.10
+                    else:
+                        current_withdrawal *= (1 + INFLATION)
+                    floor = 120_000 * inflation_adj
+                    current_withdrawal = max(current_withdrawal, floor)
+                
+                # Compute monthly withdrawal
+                if guardrails:
+                    monthly_wd = current_withdrawal / 12
                 else:
-                    asset_values = weights * 0
+                    adj = current_withdrawal * (1 + INFLATION) ** year / 12
+                    monthly_wd = adj
+                
+                if total > monthly_wd:
+                    asset_values -= weights_this_month * monthly_wd
+                else:
+                    asset_values = weights_this_month * 0
                 
                 # Annual rebalance
                 if (month + 1) % 12 == 0:
                     total = asset_values.sum()
-                    asset_values = weights * max(total, 0)
+                    asset_values = weights_this_month * max(total, 0)
                 
                 value = max(asset_values.sum(), 0)
                 paths[sim, month + 1] = value
         
         ruin_rate = ruin_count / N_RETIREMENT_SIMS
-        print(f"  {port_label} - 4% Rule: Ruin rate = {ruin_rate:.1%}")
-        if ruin_ages:
-            print(f"    Median ruin age: {np.median(ruin_ages):.1f}")
-        
-        withdrawal_strategies[f'4% Rule | {port_label}'] = {
+        return {
             'paths': paths,
             'ruin_rate': ruin_rate,
             'ruin_ages': ruin_ages,
+            'starting_value': starting_val,
         }
     
-    # Strategy 2: Variable withdrawal (Guyton-Klinger guardrails)
-    print("\nStrategy 2: Guyton-Klinger Guardrails...")
+    # Inflate current $180K expenses to retirement year (19 years at 3%)
+    YEARS_TO_RETIREMENT = TOTAL_MONTHS / 12  # 19 years
+    RETIREMENT_EXPENSES = ANNUAL_EXPENSES * (1 + INFLATION) ** YEARS_TO_RETIREMENT
+    print(f"\nInflation-adjusted expenses at retirement: ${RETIREMENT_EXPENSES:,.0f}/yr "
+          f"(${ANNUAL_EXPENSES:,}/yr in 2026 dollars × {(1+INFLATION)**YEARS_TO_RETIREMENT:.2f}x)")
     
-    for port_label, weights in [('Proposed', proposed_w)]:
-        paths = np.zeros((N_RETIREMENT_SIMS, RETIREMENT_MONTHS + 1))
-        paths[:, 0] = starting_value
-        ruin_count = 0
-        ruin_ages = []
-        
-        for sim in range(N_RETIREMENT_SIMS):
-            sample_indices = np.random.randint(0, n_hist, size=RETIREMENT_MONTHS)
-            sampled_returns = boot_matrix[sample_indices]
-            
-            value = starting_value
-            asset_values = weights * value
-            base_withdrawal = starting_value * 0.05  # Start at 5%
-            current_withdrawal = base_withdrawal
-            ruined = False
-            
-            for month in range(RETIREMENT_MONTHS):
-                if value <= 0:
-                    paths[sim, month + 1:] = 0
-                    if not ruined:
-                        ruin_count += 1
-                        ruin_ages.append(55 + month / 12)
-                        ruined = True
-                    break
-                
-                monthly_rets = sampled_returns[month]
-                asset_values = asset_values * (1 + monthly_rets)
-                total = asset_values.sum()
-                
-                # Annual guardrail check
-                if month > 0 and month % 12 == 0:
-                    year = month // 12
-                    inflation_adj = (1 + INFLATION) ** year
-                    
-                    withdrawal_rate = current_withdrawal / total if total > 0 else 1
-                    
-                    # Upper guardrail: if rate > 6%, cut by 10%
-                    if withdrawal_rate > 0.06:
-                        current_withdrawal *= 0.90
-                    # Lower guardrail: if rate < 3.5%, increase by 10%
-                    elif withdrawal_rate < 0.035:
-                        current_withdrawal *= 1.10
-                    else:
-                        # Normal inflation adjustment
-                        current_withdrawal *= (1 + INFLATION)
-                    
-                    # Floor: never below $120K/year (real)
-                    floor = 120_000 * inflation_adj
-                    current_withdrawal = max(current_withdrawal, floor)
-                
-                # Monthly withdrawal
-                monthly_withdrawal = current_withdrawal / 12
-                
-                if total > monthly_withdrawal:
-                    asset_values -= weights * monthly_withdrawal
-                else:
-                    asset_values = weights * 0
-                
-                if (month + 1) % 12 == 0:
-                    total = asset_values.sum()
-                    asset_values = weights * max(total, 0)
-                
-                value = max(asset_values.sum(), 0)
-                paths[sim, month + 1] = value
-        
-        ruin_rate = ruin_count / N_RETIREMENT_SIMS
-        print(f"  {port_label} - Guardrails: Ruin rate = {ruin_rate:.1%}")
-        
-        withdrawal_strategies[f'Guardrails | {port_label}'] = {
-            'paths': paths,
-            'ruin_rate': ruin_rate,
-            'ruin_ages': ruin_ages,
-        }
+    # Run inflation-adjusted actual expenses for ALL scenarios
+    print(f"\nStrategy: Actual Expenses (${RETIREMENT_EXPENSES/1000:.0f}K/year in 2045 dollars) — all scenarios...")
+    for label, (w_vec, boot_mat, n_hist, asset_list) in scenario_configs.items():
+        sv = mc_results[label]['percentiles'][19]['median']
+        result = _run_withdrawal_sim(label, w_vec, boot_mat, n_hist, sv,
+                                      annual_amount=RETIREMENT_EXPENSES, asset_list=asset_list)
+        withdrawal_strategies[f'${RETIREMENT_EXPENSES/1000:.0f}K/yr | {label}'] = result
+        print(f"  {label} - ${RETIREMENT_EXPENSES/1000:.0f}K/yr: Ruin rate = {result['ruin_rate']:.1%} (start ${sv/1e6:.1f}M)")
     
-    # Strategy 3: Bond tent (increase bonds to 40% years 55-65, then back)
-    print("\nStrategy 3: Bond Tent...")
+    # Run 3% withdrawal for ALL scenarios
+    print("\nStrategy: 3% Withdrawal — all scenarios...")
+    for label, (w_vec, boot_mat, n_hist, asset_list) in scenario_configs.items():
+        sv = mc_results[label]['percentiles'][19]['median']
+        annual_3pct = sv * 0.03
+        result = _run_withdrawal_sim(label, w_vec, boot_mat, n_hist, sv,
+                                      annual_amount=annual_3pct, asset_list=asset_list)
+        withdrawal_strategies[f'3% Rule | {label}'] = result
+        print(f"  {label} - 3% Rule (${annual_3pct/1000:.0f}K/yr): Ruin rate = {result['ruin_rate']:.1%}")
     
-    for port_label, weights in [('Proposed', proposed_w)]:
-        paths = np.zeros((N_RETIREMENT_SIMS, RETIREMENT_MONTHS + 1))
-        paths[:, 0] = starting_value
-        ruin_count = 0
-        ruin_ages = []
-        
-        # Build bond tent weights (use proposed_assets for index lookup)
-        bonds_idx = proposed_assets.index('Bonds') if 'Bonds' in proposed_assets else None
-        tips_idx = proposed_assets.index('TIPS') if 'TIPS' in proposed_assets else None
-        
-        for sim in range(N_RETIREMENT_SIMS):
-            sample_indices = np.random.randint(0, n_hist, size=RETIREMENT_MONTHS)
-            sampled_returns = boot_matrix[sample_indices]
-            
-            value = starting_value
-            annual_withdrawal = initial_4pct
-            ruined = False
-            
-            for month in range(RETIREMENT_MONTHS):
-                if value <= 0:
-                    paths[sim, month + 1:] = 0
-                    if not ruined:
-                        ruin_count += 1
-                        ruin_ages.append(55 + month / 12)
-                        ruined = True
-                    break
-                
-                year = month // 12
-                
-                # Bond tent: 40% bonds in years 0-5, linearly decrease to 8% by year 10
-                if year <= 5:
-                    bond_alloc = 0.40
-                elif year <= 10:
-                    bond_alloc = 0.40 - (year - 5) * 0.064  # decrease to 8%
-                else:
-                    bond_alloc = 0.08
-                
-                # Adjust weights for bond tent
-                tent_weights = weights.copy()
-                if bonds_idx is not None:
-                    current_bond = tent_weights[bonds_idx]
-                    if tips_idx is not None:
-                        current_bond += tent_weights[tips_idx]
-                    
-                    extra_bonds = bond_alloc - current_bond
-                    if extra_bonds > 0:
-                        # Take from equity proportionally
-                        equity_mask = np.ones(len(weights), dtype=bool)
-                        if bonds_idx is not None:
-                            equity_mask[bonds_idx] = False
-                        if tips_idx is not None:
-                            equity_mask[tips_idx] = False
-                        
-                        equity_total = tent_weights[equity_mask].sum()
-                        if equity_total > extra_bonds:
-                            tent_weights[equity_mask] *= (equity_total - extra_bonds) / equity_total
-                            tent_weights[bonds_idx] = bond_alloc * 0.7
-                            if tips_idx is not None:
-                                tent_weights[tips_idx] = bond_alloc * 0.3
-                
-                tent_weights = tent_weights / tent_weights.sum()
-                asset_values = tent_weights * value
-                
-                monthly_rets = sampled_returns[month]
-                asset_values = asset_values * (1 + monthly_rets)
-                
-                adj_withdrawal = annual_withdrawal * (1 + INFLATION) ** year / 12
-                
-                total = asset_values.sum()
-                if total > adj_withdrawal:
-                    asset_values -= tent_weights * adj_withdrawal
-                else:
-                    asset_values = tent_weights * 0
-                
-                value = max(asset_values.sum(), 0)
-                paths[sim, month + 1] = value
-        
-        ruin_rate = ruin_count / N_RETIREMENT_SIMS
-        print(f"  {port_label} - Bond Tent: Ruin rate = {ruin_rate:.1%}")
-        
-        withdrawal_strategies[f'Bond Tent | {port_label}'] = {
-            'paths': paths,
-            'ruin_rate': ruin_rate,
-            'ruin_ages': ruin_ages,
-        }
+    # Run 4% rule for ALL scenarios
+    print("\nStrategy: 4% Rule — all scenarios...")
+    for label, (w_vec, boot_mat, n_hist, asset_list) in scenario_configs.items():
+        sv = mc_results[label]['percentiles'][19]['median']
+        annual_4pct = sv * 0.04
+        result = _run_withdrawal_sim(label, w_vec, boot_mat, n_hist, sv,
+                                      annual_amount=annual_4pct, asset_list=asset_list)
+        withdrawal_strategies[f'4% Rule | {label}'] = result
+        print(f"  {label} - 4% Rule (${annual_4pct/1000:.0f}K/yr): Ruin rate = {result['ruin_rate']:.1%}")
     
-    # Also run 4% rule for current portfolio
-    print("\nStrategy 1 (Current Portfolio): Fixed 4% Rule...")
-    starting_value_current = mc_results['Current']['percentiles'][19]['median']
-    initial_4pct_current = starting_value_current * 0.04
+    # Run Guyton-Klinger guardrails for ALL scenarios
+    print("\nStrategy: Guyton-Klinger Guardrails — all scenarios...")
+    for label, (w_vec, boot_mat, n_hist, asset_list) in scenario_configs.items():
+        sv = mc_results[label]['percentiles'][19]['median']
+        result = _run_withdrawal_sim(label, w_vec, boot_mat, n_hist, sv,
+                                      annual_amount=sv * 0.05, guardrails=True, asset_list=asset_list)
+        withdrawal_strategies[f'Guardrails | {label}'] = result
+        print(f"  {label} - Guardrails: Ruin rate = {result['ruin_rate']:.1%}")
     
-    # Use current portfolio's bootstrap data
-    current_w_local = np.array([CURRENT_WEIGHTS.get(a, 0) for a in current_assets])
-    current_w_local = current_w_local / current_w_local.sum()
-    
-    paths = np.zeros((N_RETIREMENT_SIMS, RETIREMENT_MONTHS + 1))
-    paths[:, 0] = starting_value_current
-    ruin_count = 0
-    ruin_ages = []
-    
-    for sim in range(N_RETIREMENT_SIMS):
-        sample_indices = np.random.randint(0, n_hist_current, size=RETIREMENT_MONTHS)
-        sampled_returns = current_boot_matrix[sample_indices]
-        
-        value = starting_value_current
-        asset_values = current_w_local * value
-        annual_withdrawal = initial_4pct_current
-        ruined = False
-        
-        for month in range(RETIREMENT_MONTHS):
-            if value <= 0:
-                paths[sim, month + 1:] = 0
-                if not ruined:
-                    ruin_count += 1
-                    ruin_ages.append(55 + month / 12)
-                    ruined = True
-                break
-            
-            monthly_rets = sampled_returns[month]
-            asset_values = asset_values * (1 + monthly_rets)
-            
-            year = month // 12
-            adj_withdrawal = annual_withdrawal * (1 + INFLATION) ** year / 12
-            
-            total = asset_values.sum()
-            if total > adj_withdrawal:
-                asset_values -= current_w_local * adj_withdrawal
-            else:
-                asset_values = current_w_local * 0
-            
-            if (month + 1) % 12 == 0:
-                total = asset_values.sum()
-                asset_values = current_w_local * max(total, 0)
-            
-            value = max(asset_values.sum(), 0)
-            paths[sim, month + 1] = value
-    
-    ruin_rate_current = ruin_count / N_RETIREMENT_SIMS
-    print(f"  Current - 4% Rule: Ruin rate = {ruin_rate_current:.1%}")
-    
-    withdrawal_strategies['4% Rule | Current'] = {
-        'paths': paths,
-        'ruin_rate': ruin_rate_current,
-        'ruin_ages': ruin_ages,
-        'starting_value': starting_value_current,
-    }
-    
-    return withdrawal_strategies, starting_value
+    return withdrawal_strategies
 
 
-def plot_sequence_risk(withdrawal_strategies, starting_value):
-    """Generate spaghetti plot of retirement paths."""
-    fig, axes = plt.subplots(2, 3, figsize=(20, 12))
-    
-    strategies = [
-        ('$180K/yr | Proposed', '$180K/yr Actual Expenses (Proposed)'),
-        ('$180K/yr | Current', '$180K/yr Actual Expenses (Current)'),
-        ('4% Rule | Proposed', '4% Rule (Proposed)'),
-        ('4% Rule | Current', '4% Rule (Current)'),
-        ('Guardrails | Proposed', 'Guyton-Klinger Guardrails'),
-        ('Bond Tent | Proposed', 'Bond Tent Strategy'),
-    ]
-    
+def plot_sequence_risk(withdrawal_strategies):
+    """Generate sequence risk charts — one per strategy showing all scenarios overlaid."""
+    # Discover strategy prefixes dynamically from keys
+    all_prefixes = sorted(set(k.split(' | ')[0] for k in withdrawal_strategies.keys()))
+    strategy_prefixes = all_prefixes[:4]  # Limit to 2×2 grid
     ages = np.linspace(55, 90, 421)
     
-    # Compute global y-max across all strategies for shared scale
-    global_ymax = 0
-    for key, _ in strategies:
-        if key in withdrawal_strategies:
-            p90 = np.percentile(withdrawal_strategies[key]['paths'], 90, axis=0)
-            global_ymax = max(global_ymax, p90.max() / 1e6)
-    global_ymax = global_ymax * 1.1  # 10% padding
+    n_strats = len(strategy_prefixes)
+    fig, axes = plt.subplots(2, 2, figsize=(18, 14))
     
-    for ax, (key, title) in zip(axes.flat, strategies):
-        if key not in withdrawal_strategies:
+    for ax, strat_prefix in zip(axes.flat, strategy_prefixes):
+        # Find all scenarios for this strategy
+        matching = {k: v for k, v in withdrawal_strategies.items() if k.startswith(strat_prefix)}
+        
+        if not matching:
             ax.set_visible(False)
             continue
         
-        data = withdrawal_strategies[key]
-        paths = data['paths']
-        ruin_rate = data['ruin_rate']
-        sv = data.get('starting_value', starting_value)
-        
-        # Sample 100 random paths
-        sample_idx = np.random.choice(paths.shape[0], min(100, paths.shape[0]), replace=False)
-        
-        for i in sample_idx:
-            path = paths[i]
-            color = RED if path[-1] <= 0 else TEAL
-            alpha = 0.4 if path[-1] <= 0 else 0.15
-            ax.plot(ages, path / 1e6, color=color, alpha=alpha, linewidth=0.5)
-        
-        # Plot median
-        median_path = np.median(paths, axis=0)
-        ax.plot(ages, median_path / 1e6, color=NAVY, linewidth=2.5, label='Median')
-        
-        # Plot 10th and 90th percentiles
-        p10 = np.percentile(paths, 10, axis=0)
-        p90 = np.percentile(paths, 90, axis=0)
-        ax.plot(ages, p10 / 1e6, color=NAVY, linewidth=1, linestyle='--', alpha=0.5, label='10th/90th %ile')
-        ax.plot(ages, p90 / 1e6, color=NAVY, linewidth=1, linestyle='--', alpha=0.5)
+        # Plot median + 10/90 band for each scenario
+        for key, data in matching.items():
+            label = key.split(' | ')[-1]
+            color = SCENARIO_COLORS.get(label, TEAL)
+            paths = data['paths']
+            ruin = data['ruin_rate']
+            sv = data.get('starting_value', paths[0, 0])
+            
+            median_path = np.median(paths, axis=0)
+            p10 = np.percentile(paths, 10, axis=0)
+            p90 = np.percentile(paths, 90, axis=0)
+            
+            ax.fill_between(ages, p10 / 1e6, p90 / 1e6, alpha=0.08, color=color)
+            ax.plot(ages, median_path / 1e6, color=color, linewidth=2, 
+                    label=f'{label}: {ruin:.1%} ruin')
         
         ax.axhline(y=0, color=RED, linewidth=1, linestyle='-', alpha=0.5)
-        ax.set_title(f'{title}\nRuin rate: {ruin_rate:.1%} | Start: ${sv/1e6:.1f}M', 
-                     fontsize=11, fontweight='bold', color=NAVY)
+        ax.axvline(x=62, color=GOLD, linestyle=':', alpha=0.4)
+        ax.axvline(x=65, color=GREEN, linestyle=':', alpha=0.4)
+        ax.text(62.2, ax.get_ylim()[1] * 0.9 if ax.get_ylim()[1] > 0 else 1, 
+                'SS (62)', fontsize=8, color=GOLD, fontweight='bold')
+        ax.text(65.2, ax.get_ylim()[1] * 0.85 if ax.get_ylim()[1] > 0 else 0.8, 
+                'Medicare (65)', fontsize=8, color=GREEN, fontweight='bold')
+        
+        ax.set_title(f'{strat_prefix} Withdrawal', fontsize=13, fontweight='bold', color=NAVY)
         ax.set_xlabel('Age')
         ax.set_ylabel('Portfolio ($M)')
         ax.yaxis.set_major_formatter(mticker.FuncFormatter(lambda x, p: f'${x:.0f}M'))
         ax.legend(loc='upper right', fontsize=8)
         ax.set_xlim(55, 90)
-        ax.set_ylim(-0.5, global_ymax)  # Shared y-axis scale
-        
-        # Social Security and Medicare markers
-        ax.axvline(x=62, color=GOLD, linestyle=':', alpha=0.5)
-        ax.axvline(x=65, color=GREEN, linestyle=':', alpha=0.5)
-        ax.text(62.2, global_ymax * 0.92, 'SS (62)', fontsize=8, color=GOLD, fontweight='bold')
-        ax.text(65.2, global_ymax * 0.85, 'Medicare\n(65)', fontsize=8, color=GREEN, fontweight='bold')
     
-    fig.suptitle('Sequence of Returns Risk: Retirement Portfolio Survival (Age 55→90)',
+    fig.suptitle('Sequence of Returns Risk: Retirement Portfolio Survival (Age 55→90)\nAll Scenarios Compared',
                  fontsize=16, fontweight='bold', color=NAVY, y=1.02)
     
     plt.tight_layout()
@@ -1449,44 +1194,71 @@ def plot_sequence_risk(withdrawal_strategies, starting_value):
 # ============================================================
 
 def generate_report(mc_results, stress_results, sensitivity_scenarios, 
-                   withdrawal_strategies, starting_retirement_value,
-                   asset_stats, data_info, corr_matrix):
-    """Generate the full quantitative analysis report."""
+                   withdrawal_strategies, asset_stats, data_info, corr_matrix):
+    """Generate the full quantitative analysis report for all scenarios."""
     
-    c = mc_results['Current']
-    p = mc_results['Proposed']
+    scenario_labels = list(mc_results.keys())
     
     report = f"""# Quantitative Portfolio Analysis: Cleary Family
 ## Date: March 29, 2026
 
 ---
 
+## Portfolio Allocations
+
+Each scenario represents a distinct investment philosophy. All weights sum to 100%.
+
+| Asset Class | Current | Conservative | All-Weather | Boglehead | Barbell |
+|-------------|---------|-------------|-------------|-----------|---------|
+"""
+    
+    # Build allocation table
+    all_asset_names = sorted(set().union(*[set(SCENARIOS[l].keys()) for l in scenario_labels]))
+    for asset in all_asset_names:
+        row = f"| {asset} "
+        for label in scenario_labels:
+            w = SCENARIOS[label].get(asset, 0)
+            row += f"| {w:.1%} " if w > 0 else "| — "
+        row += "|\n"
+        report += row
+    
+    report += f"""
+**Current:** Your actual holdings — 35% AMZN, heavy US large cap, no international, minimal bonds.
+**Conservative:** Sell ~500 AMZN shares over 12 months, redeploy to VTI/VXUS. AMZN drops to ~20%.
+**All-Weather:** Ray Dalio's risk-parity approach — designed to perform in any economic regime (inflation, deflation, growth, recession).
+**Boglehead:** The classic 3-fund portfolio (VTI/VXUS/BND). Dead simple, hard to beat.
+**Barbell:** Nassim Taleb philosophy — 70% aggressive equity + 30% safest bonds. Nothing in between.
+
+---
+
 ## Executive Summary
 
-This analysis compares your **current concentrated portfolio** (~35% Amazon, ~32% US large cap) against a **proposed diversified portfolio** across 10 asset classes. Using 10,000 Monte Carlo simulations built from real historical return data, historical stress tests, and sequence-of-returns modeling, the findings are clear:
+This analysis compares **5 portfolio scenarios** across 10,000 Monte Carlo simulations, 4 historical stress tests, sensitivity analysis, and sequence-of-returns modeling.
 
-{"**The diversified portfolio delivers comparable expected growth with dramatically lower risk.**" if abs(p['median_final'] - c['median_final']) / c['median_final'] < 0.20 else "**The two portfolios show meaningfully different expected outcomes — but the risk profiles diverge even more.**" if p['median_final'] < c['median_final'] else "**The diversified portfolio outperforms on both expected growth and risk reduction.**"}
-
-| Metric | Current (Concentrated) | Proposed (Diversified) |
-|--------|----------------------|----------------------|
-| Median value at 55 | ${c['median_final']:,.0f} | ${p['median_final']:,.0f} |
-| Mean value at 55 | ${c['mean_final']:,.0f} | ${p['mean_final']:,.0f} |
-| 10th percentile (bad luck) | ${np.percentile(c['final_values'], 10):,.0f} | ${np.percentile(p['final_values'], 10):,.0f} |
-| 90th percentile (good luck) | ${np.percentile(c['final_values'], 90):,.0f} | ${np.percentile(p['final_values'], 90):,.0f} |
-| P(reach $5M) | {c['prob_5M']:.1%} | {p['prob_5M']:.1%} |
-| P(reach $8M) | {c['prob_8M']:.1%} | {p['prob_8M']:.1%} |
-| P(reach $10M) | {c['prob_10M']:.1%} | {p['prob_10M']:.1%} |
-| P(portfolio < $500K ever) | {c['prob_below_500K']:.1%} | {p['prob_below_500K']:.1%} |
-| Median max drawdown | {np.median(c['max_drawdowns']):.1%} | {np.median(p['max_drawdowns']):.1%} |
-
-**Key takeaway:** The proposed portfolio's 10th percentile outcome (${np.percentile(p['final_values'], 10):,.0f}) is {"higher" if np.percentile(p['final_values'], 10) > np.percentile(c['final_values'], 10) else "lower"} than the current portfolio's 10th percentile (${np.percentile(c['final_values'], 10):,.0f}). {"This means even in bad scenarios, the diversified portfolio protects you better." if np.percentile(p['final_values'], 10) > np.percentile(c['final_values'], 10) else ""}
-
-The spread between the 10th and 90th percentiles tells the story of risk:
-- **Current portfolio spread:** ${(np.percentile(c['final_values'], 90) - np.percentile(c['final_values'], 10)):,.0f}
-- **Proposed portfolio spread:** ${(np.percentile(p['final_values'], 90) - np.percentile(p['final_values'], 10)):,.0f}
-
-{"The current portfolio has a wider spread — meaning more uncertainty. Some simulations end spectacularly, but many end poorly. The diversified portfolio narrows the range, giving you more predictable outcomes." if (np.percentile(c['final_values'], 90) - np.percentile(c['final_values'], 10)) > (np.percentile(p['final_values'], 90) - np.percentile(p['final_values'], 10)) else ""}
-
+| Metric | {' | '.join(scenario_labels)} |
+|--------|{'|'.join(['------' for _ in scenario_labels])}|
+"""
+    
+    # Summary table rows
+    metrics = [
+        ('Median at 55', lambda r: f"${r['median_final']:,.0f}"),
+        ('Mean at 55', lambda r: f"${r['mean_final']:,.0f}"),
+        ('10th %ile', lambda r: f"${np.percentile(r['final_values'], 10):,.0f}"),
+        ('90th %ile', lambda r: f"${np.percentile(r['final_values'], 90):,.0f}"),
+        ('P(>$5M)', lambda r: f"{r['prob_5M']:.1%}"),
+        ('P(>$10M)', lambda r: f"{r['prob_10M']:.1%}"),
+        ('P(<$500K ever)', lambda r: f"{r['prob_below_500K']:.1%}"),
+        ('Median max DD', lambda r: f"{np.median(r['max_drawdowns']):.1%}"),
+    ]
+    
+    for metric_name, metric_fn in metrics:
+        row = f"| {metric_name} "
+        for label in scenario_labels:
+            row += f"| {metric_fn(mc_results[label])} "
+        row += "|\n"
+        report += row
+    
+    report += f"""
 ---
 
 ## Model 1: Monte Carlo Simulation
@@ -1494,7 +1266,7 @@ The spread between the 10th and 90th percentiles tells the story of risk:
 ### Methodology
 - **Data source:** Historical monthly returns from Yahoo Finance for each asset class proxy
 - **Simulation method:** Bootstrap resampling of actual monthly return vectors (preserves fat tails, real correlations, and non-normal distributions)
-- **Simulations:** 10,000 paths over 228 months (19 years)
+- **Simulations:** {N_SIMULATIONS:,} paths over {TOTAL_MONTHS} months (19 years)
 - **Contributions:** $18,000/month for first 24 months (RSU transition), then $6,667/month ongoing
 - **Balloon payment:** $400,000 subtracted at month 168 (age 50) for mortgage balloon
 - **Rebalancing:** Annual to target weights
@@ -1518,94 +1290,65 @@ The spread between the 10th and 90th percentiles tells the story of risk:
         suffix = " **(adjusted)**" if name == 'AMZN' else ""
         report += f"| {name}{suffix} | {s['annual_return']:.1%} | {s['annual_vol']:.1%} | {s['sharpe']:.2f} | {s['skew']:.2f} | {s['kurtosis']:.1f} | {s['max_drawdown']:.1%} |\n"
     
+    # Year-by-year projections for each scenario
+    for label in scenario_labels:
+        r = mc_results[label]
+        report += f"""
+#### {label} Portfolio
+| Age | 10th %ile | 25th %ile | Median | 75th %ile | 90th %ile |
+|-----|-----------|-----------|--------|-----------|-----------|
+"""
+        for year in range(0, 20, 2):
+            age = 36 + year
+            p = r['percentiles'][year]
+            report += f"| {age} | ${p['p10']:,.0f} | ${p['p25']:,.0f} | ${p['median']:,.0f} | ${p['p75']:,.0f} | ${p['p90']:,.0f} |\n"
+    
     report += f"""
-### Year-by-Year Projections
 
-#### Current Portfolio (Concentrated)
-| Age | 10th %ile | 25th %ile | Median | 75th %ile | 90th %ile |
-|-----|-----------|-----------|--------|-----------|-----------|
-"""
-    
-    for year in range(0, 20, 2):
-        age = 36 + year
-        cp = c['percentiles'][year]
-        report += f"| {age} | ${cp['p10']:,.0f} | ${cp['p25']:,.0f} | ${cp['median']:,.0f} | ${cp['p75']:,.0f} | ${cp['p90']:,.0f} |\n"
-    
-    report += f"""
-#### Proposed Portfolio (Diversified)
-| Age | 10th %ile | 25th %ile | Median | 75th %ile | 90th %ile |
-|-----|-----------|-----------|--------|-----------|-----------|
-"""
-    
-    for year in range(0, 20, 2):
-        age = 36 + year
-        pp = p['percentiles'][year]
-        report += f"| {age} | ${pp['p10']:,.0f} | ${pp['p25']:,.0f} | ${pp['median']:,.0f} | ${pp['p75']:,.0f} | ${pp['p90']:,.0f} |\n"
-    
-    report += f"""
 ### Probability of Reaching Milestones
 
-| Milestone | Current | Proposed | Advantage |
-|-----------|---------|----------|-----------|
-| $5M | {c['prob_5M']:.1%} | {p['prob_5M']:.1%} | {'Proposed' if p['prob_5M'] > c['prob_5M'] else 'Current'} +{abs(p['prob_5M'] - c['prob_5M']):.1%} |
-| $8M | {c['prob_8M']:.1%} | {p['prob_8M']:.1%} | {'Proposed' if p['prob_8M'] > c['prob_8M'] else 'Current'} +{abs(p['prob_8M'] - c['prob_8M']):.1%} |
-| $10M | {c['prob_10M']:.1%} | {p['prob_10M']:.1%} | {'Proposed' if p['prob_10M'] > c['prob_10M'] else 'Current'} +{abs(p['prob_10M'] - c['prob_10M']):.1%} |
-| $15M | {c['prob_15M']:.1%} | {p['prob_15M']:.1%} | {'Proposed' if p['prob_15M'] > c['prob_15M'] else 'Current'} +{abs(p['prob_15M'] - c['prob_15M']):.1%} |
+| Milestone | {' | '.join(scenario_labels)} |
+|-----------|{'|'.join(['------' for _ in scenario_labels])}|
+"""
+    
+    for milestone, key in [('$5M', 'prob_5M'), ('$8M', 'prob_8M'), ('$10M', 'prob_10M'), ('$15M', 'prob_15M')]:
+        row = f"| {milestone} "
+        for label in scenario_labels:
+            row += f"| {mc_results[label][key]:.1%} "
+        row += "|\n"
+        report += row
+    
+    report += f"""
 
-### Downside Risk
+![Monte Carlo Simulation — Individual Scenarios](charts/mc-real.png)
 
-| Risk Metric | Current | Proposed |
-|-------------|---------|----------|
-| P(portfolio ever < $500K) | {c['prob_below_500K']:.1%} | {p['prob_below_500K']:.1%} |
-| Median max drawdown | {np.median(c['max_drawdowns']):.1%} | {np.median(p['max_drawdowns']):.1%} |
-| 95th percentile max drawdown | {np.percentile(c['max_drawdowns'], 5):.1%} | {np.percentile(p['max_drawdowns'], 5):.1%} |
-| Worst-case max drawdown | {c['max_drawdowns'].min():.1%} | {p['max_drawdowns'].min():.1%} |
-
-![Monte Carlo Simulation](charts/mc-real.png)
+![Monte Carlo — All Scenarios Overlaid](charts/mc-overlay.png)
 
 ---
 
 ## Model 2: Historical Stress Tests
 
-These are not hypothetical scenarios — these are the actual returns each portfolio would have experienced during real market crises.
+These are the actual returns each portfolio would have experienced during real market crises.
 
-### Results Summary
-
-| Crisis | Current Max DD | Proposed Max DD | Current $ Loss | Proposed $ Loss |
-|--------|---------------|----------------|---------------|----------------|
+| Crisis | {' | '.join(scenario_labels)} |
+|--------|{'|'.join(['------' for _ in scenario_labels])}|
 """
     
     for crisis_name, crisis_data in stress_results.items():
-        c_dd = crisis_data.get('Current', {}).get('max_dd')
-        p_dd = crisis_data.get('Proposed', {}).get('max_dd')
-        c_loss = crisis_data.get('Current', {}).get('dollar_loss')
-        p_loss = crisis_data.get('Proposed', {}).get('dollar_loss')
-        
-        c_dd_str = f"{c_dd:.1%}" if c_dd else "N/A"
-        p_dd_str = f"{p_dd:.1%}" if p_dd else "N/A"
-        c_loss_str = f"${c_loss:,.0f}" if c_loss else "N/A"
-        p_loss_str = f"${p_loss:,.0f}" if p_loss else "N/A"
-        
         clean_name = crisis_name.replace('\n', ' ')
-        report += f"| {clean_name} | {c_dd_str} | {p_dd_str} | {c_loss_str} | {p_loss_str} |\n"
+        row = f"| {clean_name} "
+        for label in scenario_labels:
+            dd = crisis_data.get(label, {}).get('max_dd')
+            loss = crisis_data.get(label, {}).get('dollar_loss')
+            if dd is not None:
+                row += f"| {dd:.1%} (−${loss:,.0f}) " if loss else f"| {dd:.1%} "
+            else:
+                row += "| N/A "
+        row += "|\n"
+        report += row
     
     report += f"""
-### What This Means
 
-"""
-    
-    # Add specific commentary on dot-com crash
-    dotcom_key = [k for k in stress_results.keys() if 'Dot-Com' in k]
-    if dotcom_key:
-        dotcom = stress_results[dotcom_key[0]]
-        c_dd = dotcom.get('Current', {}).get('max_dd')
-        p_dd = dotcom.get('Proposed', {}).get('max_dd')
-        if c_dd and p_dd:
-            report += f"""**Dot-Com Crash (2000-2002):** This is your biggest risk scenario. Amazon dropped ~95% during the dot-com bust. With your current 35% AMZN concentration, the portfolio would have experienced a **{c_dd:.1%}** drawdown — losing **${abs(c_dd) * INITIAL_PORTFOLIO:,.0f}** from a $1.23M portfolio. The diversified portfolio's drawdown was **{p_dd:.1%}** (−${abs(p_dd) * INITIAL_PORTFOLIO:,.0f}). That's the difference between a gut-wrenching near-wipeout and a painful but recoverable drawdown.
-
-"""
-    
-    report += f"""
 ![Stress Tests](charts/stress-test.png)
 
 ---
@@ -1614,136 +1357,87 @@ These are not hypothetical scenarios — these are the actual returns each portf
 
 How much do different assumptions change the outcome? All values are in **real (inflation-adjusted) dollars**.
 
-### Key Findings
-
 """
     
-    # Extract key sensitivity findings
-    base_current = None
-    base_proposed = None
+    # Base cases for all scenarios
+    base_values = {}
     for key, val in sensitivity_scenarios.items():
-        if 'Returns: Base' in key and 'Current' in key:
-            base_current = val
-        if 'Returns: Base' in key and 'Proposed' in key:
-            base_proposed = val
+        if 'Returns: Base' in key:
+            port_label = key.split(' | ')[-1]
+            base_values[port_label] = val
     
-    if base_current and base_proposed:
-        report += f"""**Base case (real dollars):**
-- Current portfolio: **${base_current/1e6:.2f}M**
-- Proposed portfolio: **${base_proposed/1e6:.2f}M**
-
-"""
+    report += "**Base cases (real dollars):**\n"
+    for label in scenario_labels:
+        bv = base_values.get(label, 0)
+        report += f"- {label}: **${bv/1e6:.2f}M**\n"
     
-    report += "### Full Sensitivity Table\n\n"
-    report += "| Scenario | Current (Real $) | Proposed (Real $) | Δ from Base (Proposed) |\n"
-    report += "|----------|-----------------|-------------------|------------------------|\n"
+    report += "\n### Full Sensitivity Table\n\n"
+    report += f"| Scenario | {' | '.join(scenario_labels)} |\n"
+    report += f"|----------|{'|'.join(['------' for _ in scenario_labels])}|\n"
     
-    # Group and display
-    seen_scenarios = set()
-    for key, val in sorted(sensitivity_scenarios.items()):
-        parts = key.split(' | ')
-        scenario = parts[0]
-        portfolio = parts[1] if len(parts) > 1 else ''
-        
-        if scenario in seen_scenarios:
+    seen = set()
+    for key in sorted(sensitivity_scenarios.keys()):
+        scenario = key.split(' | ')[0]
+        if scenario in seen:
             continue
-        
-        current_key = f"{scenario} | Current"
-        proposed_key = f"{scenario} | Proposed"
-        
-        c_val = sensitivity_scenarios.get(current_key, 0)
-        p_val = sensitivity_scenarios.get(proposed_key, 0)
-        
-        delta = (p_val - base_proposed) / 1e6 if base_proposed else 0
-        delta_str = f"+${delta:.2f}M" if delta >= 0 else f"−${abs(delta):.2f}M"
-        
-        report += f"| {scenario} | ${c_val/1e6:.2f}M | ${p_val/1e6:.2f}M | {delta_str} |\n"
-        seen_scenarios.add(scenario)
+        seen.add(scenario)
+        row = f"| {scenario} "
+        for label in scenario_labels:
+            val = sensitivity_scenarios.get(f"{scenario} | {label}", 0)
+            row += f"| ${val/1e6:.2f}M " if val else "| — "
+        row += "|\n"
+        report += row
     
     report += f"""
-### AMZN Concentration Risk Spotlight
 
-The AMZN-specific scenarios reveal the core risk of concentration:
-
-"""
-    
-    # Find AMZN -50% scenario
-    for key, val in sensitivity_scenarios.items():
-        if 'AMZN −50%' in key:
-            parts = key.split(' | ')
-            portfolio = parts[1] if len(parts) > 1 else ''
-            if 'Current' in portfolio:
-                amzn_crash_current = val
-            else:
-                amzn_crash_proposed = val
-    
-    try:
-        report += f"""- If AMZN drops 50% in the next 12 months:
-  - **Current portfolio** median outcome: **${amzn_crash_current/1e6:.2f}M** (real)
-  - **Proposed portfolio** median outcome: **${amzn_crash_proposed/1e6:.2f}M** (real)
-  - **Impact difference:** The current portfolio loses **${(base_current - amzn_crash_current)/1e6:.2f}M** more than its base case; the proposed loses only **${(base_proposed - amzn_crash_proposed)/1e6:.2f}M**
-
-"""
-    except:
-        pass
-    
-    report += f"""
 ![Sensitivity Analysis](charts/sensitivity.png)
 
 ---
 
 ## Model 4: Sequence of Returns Risk
 
-This models the retirement withdrawal phase — starting at age 55 with the projected median portfolio value, withdrawing $180,000/year (inflation-adjusted), and testing whether the money lasts through age 90 (35 years).
+This models the retirement withdrawal phase — starting at age 55 with the projected median portfolio value, testing whether the money lasts through age 90 (35 years).
 
-### Starting Values
-- **Current portfolio** projected median at 55: ${mc_results['Current']['percentiles'][19]['median']:,.0f}
-- **Proposed portfolio** projected median at 55: ${mc_results['Proposed']['percentiles'][19]['median']:,.0f}
+### Starting Values by Scenario
 
-### Ruin Rates by Strategy
-
-| Strategy | Portfolio | Ruin Rate (before age 90) |
-|----------|-----------|--------------------------|
+| Scenario | Median at 55 |
+|----------|-------------|
 """
     
-    for key, data in withdrawal_strategies.items():
-        report += f"| {key.split(' | ')[0]} | {key.split(' | ')[1]} | {data['ruin_rate']:.1%} |\n"
+    for label in scenario_labels:
+        sv = mc_results[label]['percentiles'][19]['median']
+        report += f"| {label} | ${sv:,.0f} |\n"
     
     report += f"""
-### What This Means
 
+### Ruin Rates: All Strategies × All Scenarios
+
+| Strategy | {' | '.join(scenario_labels)} |
+|----------|{'|'.join(['------' for _ in scenario_labels])}|
 """
     
-    # Get the 4% rule ruin rates
-    proposed_4pct_ruin = withdrawal_strategies.get('4% Rule | Proposed', {}).get('ruin_rate', 0)
-    current_4pct_ruin = withdrawal_strategies.get('4% Rule | Current', {}).get('ruin_rate', 0)
-    guardrails_ruin = withdrawal_strategies.get('Guardrails | Proposed', {}).get('ruin_rate', 0)
-    bond_tent_ruin = withdrawal_strategies.get('Bond Tent | Proposed', {}).get('ruin_rate', 0)
+    strat_prefixes = sorted(set(k.split(' | ')[0] for k in withdrawal_strategies.keys()))
+    for strat_prefix in strat_prefixes:
+        row = f"| {strat_prefix} "
+        for label in scenario_labels:
+            key = f"{strat_prefix} | {label}"
+            data = withdrawal_strategies.get(key, {})
+            ruin = data.get('ruin_rate')
+            row += f"| {ruin:.1%} " if ruin is not None else "| N/A "
+        row += "|\n"
+        report += row
     
-    # Get the $180K/yr results
-    proposed_180k_ruin = withdrawal_strategies.get('$180K/yr | Proposed', {}).get('ruin_rate', 0)
-    current_180k_ruin = withdrawal_strategies.get('$180K/yr | Current', {}).get('ruin_rate', 0)
-    
-    report += f"""**Your actual target ($180K/year):**
+    report += f"""
 
-1. **At $180K/year expenses (proposed portfolio):** **{proposed_180k_ruin:.1%}** ruin rate. This is your most relevant number — it reflects your actual spending target, not the arbitrary 4% rule. The concentrated portfolio shows **{current_180k_ruin:.1%}** — higher because of AMZN volatility in the early withdrawal years.
+### What This Means
 
-2. **Guyton-Klinger guardrails** — adjusting withdrawals based on portfolio performance — {"reduce" if guardrails_ruin < proposed_180k_ruin else "change"} the ruin rate to **{guardrails_ruin:.1%}**. The tradeoff: spending may vary ±15-20% year-to-year, but you almost never run out of money.
+The **actual expenses** and **3% rule** rows are the most relevant to your spending. The 4% rule is included as a standard benchmark. All withdrawal amounts inflate at 3%/yr during retirement.
 
-**For reference — the traditional 4% rule:**
-
-3. **The 4% rule** on these portfolios means withdrawing ~${mc_results['Proposed']['percentiles'][19]['median'] * 0.04 / 1000:,.0f}K/year (4% of ~${mc_results['Proposed']['percentiles'][19]['median']/1e6:.1f}M). That's {mc_results['Proposed']['percentiles'][19]['median'] * 0.04 / ANNUAL_EXPENSES:.1f}× your actual expenses. At that rate, ruin rates jump to **{proposed_4pct_ruin:.1%}** (proposed) and **{current_4pct_ruin:.1%}** (current) — indicating the 4% rule is too aggressive for early retirees with a 35-year horizon.
-
-4. **The bond tent strategy** shows a ruin rate of **{bond_tent_ruin:.1%}**. The high rate suggests the current implementation needs refinement — a bond-heavy allocation may sacrifice too much growth over 35 years.
+**Guyton-Klinger guardrails** adapt withdrawals based on portfolio performance — cutting spending in down years and increasing in good years, with a $120K/yr floor.
 
 ### Critical Gap: Age 55 to 62
 
-At age 55, John would be:
-- **7 years** from earliest Social Security (age 62)
-- **10 years** from Medicare (age 65)
-- **Fully dependent** on portfolio withdrawals + any bridge income
-
-This 7-year gap is the most vulnerable period. Bad market returns here, before Social Security kicks in, have an outsized impact on long-term portfolio survival.
+At age 55, you'd be 7 years from earliest Social Security (62) and 10 years from Medicare (65). This window is the most sequence-risk-sensitive period.
 
 ![Sequence of Returns Risk](charts/sequence-risk.png)
 
@@ -1751,17 +1445,9 @@ This 7-year gap is the most vulnerable period. Bad market returns here, before S
 
 ## Correlation Matrix
 
-The actual historical correlation between assets is what drives diversification benefit. Here are the key correlations:
-
 ```
 {corr_matrix.to_string() if corr_matrix is not None else "Correlation matrix not available"}
 ```
-
-**Key observations:**
-- AMZN's correlation to US Total Market shows how much "diversification" you actually get from holding it alongside SPY
-- International developed and emerging markets provide genuine diversification (lower correlation)
-- Bonds and TIPS are the primary portfolio shock absorbers
-- Gold has historically low correlation to equities
 
 ---
 
@@ -1771,50 +1457,21 @@ The actual historical correlation between assets is what drives diversification 
 - Historical risk/return relationships between asset classes
 - The impact of concentration vs diversification using real data
 - Probability distributions of outcomes based on historical patterns
-- Relative comparison between the two portfolio strategies
+- Relative comparison between portfolio strategies
 
 ### What the models CANNOT tell us:
-- **Future returns will not match historical returns.** Past performance is not predictive. AMZN's next 20 years won't look like the last 20.
-- **Bootstrap resampling assumes the future resembles the past** in its distributional properties. A truly unprecedented event (worse than any historical crisis) is not captured.
-- **Tax impacts are not modeled.** The transition from concentrated to diversified will trigger capital gains taxes on AMZN positions. Washington has no state income tax, but federal long-term capital gains of 15-20% apply.
-- **Behavioral risk is not modeled.** The biggest risk is panic-selling during a drawdown. No model captures that.
-- **Correlation regimes can change.** During crises, correlations tend to increase (everything falls together). Our bootstrap partially captures this but may understate it.
-- **Single-stock risk is partially captured** through historical returns, but AMZN's future could diverge significantly from its past (regulatory risk, competitive disruption, etc.).
+- **Future returns will not match historical returns.** Past performance is not predictive.
+- **Bootstrap resampling assumes the future resembles the past** in its distributional properties.
+- **Tax impacts are not modeled.** The transition from concentrated to diversified will trigger capital gains.
+- **Behavioral risk is not modeled.** The biggest risk is panic-selling during a drawdown.
+- **Correlation regimes can change.** During crises, correlations tend to increase.
 
 ### Key Assumptions:
 - Monthly rebalancing of contributions, annual rebalancing of portfolio
-- $400K balloon payment at age 50 (conservative — could refinance instead)
+- $400K balloon payment at age 50
 - 3% inflation during retirement for withdrawal adjustments
 - No additional income sources in retirement (Social Security, part-time work, etc.)
-- No tax drag on returns (actual returns will be slightly lower)
-
----
-
-## What This Means For You
-
-### The Numbers Tell a Clear Story
-
-1. **Diversification doesn't cost you much upside, but it massively reduces downside.** The median outcomes for both portfolios are {"comparable" if abs(c['median_final'] - p['median_final']) / c['median_final'] < 0.15 else "different"}, but the worst-case scenarios diverge dramatically.
-
-2. **Your current portfolio is a bet on Amazon.** In {c['prob_below_500K']:.1%} of simulations, the concentrated portfolio drops below $500K at some point. For the diversified portfolio, that number is {p['prob_below_500K']:.1%}. {"That's a meaningful difference in sleep-at-night risk." if c['prob_below_500K'] > p['prob_below_500K'] else ""}
-
-3. **The stress tests are the most compelling evidence.** During the dot-com crash, a 35% AMZN allocation would have been devastating. Amazon dropped ~95%. Even with the rest in S&P 500, your portfolio would have been severely damaged. This isn't a theoretical risk — it happened, within the last 25 years.
-
-4. **Sequence of returns risk is real for early retirees.** At 55, you're too young for Social Security (62) and Medicare (65). The bond tent strategy or Guyton-Klinger guardrails provide meaningful protection during this vulnerable window.
-
-### Recommended Actions
-
-Based on the quantitative analysis:
-
-1. **Begin the transition to the diversified portfolio.** The risk reduction is significant and the expected return tradeoff is {"minimal" if abs(c['median_final'] - p['median_final']) / c['median_final'] < 0.10 else "moderate"}.
-
-2. **Prioritize the AMZN reduction.** Moving from 35% to 15% captures most of the risk reduction. This is the single highest-impact change.
-
-3. **Plan the tax-efficient transition.** Spread AMZN sales across tax years. Use tax-loss harvesting on TSLA and other positions to offset gains. Maximize use of 401k and ESPP for new diversified positions.
-
-4. **Implement a bond tent starting at age 50.** Begin increasing bond allocation 5 years before retirement to protect against sequence risk.
-
-5. **Consider Guyton-Klinger withdrawal rules** instead of a rigid 4% rule. The flexibility to reduce spending in down years significantly improves portfolio survival.
+- No tax drag on returns
 
 ---
 
@@ -1836,6 +1493,7 @@ Based on the quantitative analysis:
 def main():
     print("=" * 70)
     print("CLEARY FAMILY PORTFOLIO QUANTITATIVE ANALYSIS")
+    print(f"SCENARIOS: {', '.join(SCENARIOS.keys())}")
     print("=" * 70)
     print(f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print(f"Simulations: {N_SIMULATIONS:,}")
@@ -1853,38 +1511,29 @@ def main():
     print("\nCorrelation Matrix (common period):")
     print(corr.round(2).to_string())
     
-    # Step 3: Monte Carlo
-    (mc_results, all_assets, current_w, proposed_w,
-     current_assets, proposed_assets,
-     current_boot_matrix, proposed_boot_matrix,
-     n_hist_current, n_hist_proposed,
-     current_w_vec, proposed_w_vec) = run_monte_carlo(
-        returns_df, common_returns, CURRENT_WEIGHTS, PROPOSED_WEIGHTS)
+    # Step 3: Monte Carlo (all scenarios)
+    mc_results, all_assets, scenario_configs = run_monte_carlo(
+        returns_df, common_returns, SCENARIOS)
     plot_monte_carlo(mc_results)
     
-    # Step 4: Stress tests
-    stress_results = run_stress_tests(all_prices, CURRENT_WEIGHTS, PROPOSED_WEIGHTS)
+    # Step 4: Stress tests (all scenarios)
+    stress_results = run_stress_tests(all_prices, SCENARIOS)
     plot_stress_tests(stress_results)
     
-    # Step 5: Sensitivity analysis
+    # Step 5: Sensitivity analysis (all scenarios)
     sensitivity_scenarios = run_sensitivity_analysis(
-        returns_df, common_returns, all_assets, current_w, proposed_w,
-        current_assets, proposed_assets, current_boot_matrix, proposed_boot_matrix,
-        n_hist_current, n_hist_proposed)
+        returns_df, common_returns, all_assets, scenario_configs)
     plot_sensitivity(sensitivity_scenarios)
     
-    # Step 6: Sequence of returns
-    withdrawal_strategies, starting_value = run_sequence_risk(
-        returns_df, common_returns, all_assets, current_w_vec, proposed_w_vec, mc_results,
-        proposed_assets, proposed_boot_matrix, n_hist_proposed,
-        current_assets, current_boot_matrix, n_hist_current)
-    plot_sequence_risk(withdrawal_strategies, starting_value)
+    # Step 6: Sequence of returns (all scenarios)
+    withdrawal_strategies = run_sequence_risk(
+        returns_df, common_returns, all_assets, scenario_configs, mc_results)
+    plot_sequence_risk(withdrawal_strategies)
     
     # Step 7: Generate report
     report_path = generate_report(
         mc_results, stress_results, sensitivity_scenarios,
-        withdrawal_strategies, starting_value,
-        asset_stats, data_info, corr)
+        withdrawal_strategies, asset_stats, data_info, corr)
     
     print("\n" + "=" * 70)
     print("ANALYSIS COMPLETE")
